@@ -1,0 +1,73 @@
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/tonysanin/brobar/pkg/helpers"
+	"github.com/tonysanin/brobar/product-service/internal/api"
+	"github.com/tonysanin/brobar/product-service/internal/repositories"
+	"github.com/tonysanin/brobar/product-service/internal/services"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("Warning: No .env file found or failed to load")
+	}
+
+	port := helpers.GetEnv("PRODUCT_PORT", "1")
+
+	db, err := InitDatabase()
+	if err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+	defer func(db *sqlx.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatalf("Close database failed: %v", err)
+		}
+	}(db)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		log.Fatalf("Database ping failed: %v", err)
+	}
+
+	productRepository := repositories.NewProductRepository(db)
+	variationRepository := repositories.NewProductVariationRepository(db)
+	variationGroupRepository := repositories.NewProductVariationGroupRepository(db)
+	productService := services.NewProductService(db, productRepository, variationGroupRepository, variationRepository)
+
+	categoryRepository := repositories.NewCategoryRepository(db)
+	categoryService := services.NewCategoryService(categoryRepository)
+
+	variationService := services.NewProductVariationService(variationRepository)
+
+	variationGroupService := services.NewProductVariationGroupService(variationGroupRepository)
+
+	server := api.NewServer(productService, categoryService, variationService, variationGroupService)
+
+	log.Printf("Starting server on :%s", port)
+	if err := server.Listen(":" + port); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func InitDatabase() (*sqlx.DB, error) {
+	connStr := "postgres://" +
+		helpers.GetEnv("DB_USER", "") + ":" +
+		helpers.GetEnv("DB_PASSWORD", "") + "@" +
+		helpers.GetEnv("DB_HOST", "") + ":" +
+		helpers.GetEnv("DB_PORT", "") + "/" +
+		helpers.GetEnv("DB_NAME", "") + "?sslmode=" +
+		helpers.GetEnv("DB_SSLMODE", "disable")
+
+	return sqlx.Connect("postgres", connStr)
+}

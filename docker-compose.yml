@@ -1,0 +1,244 @@
+services:
+  rabbitmq:
+    container_name: brobar_rabbitmq
+    image: rabbitmq:3.11
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "status" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  product_db:
+    container_name: "product_db"
+    image: postgres:14
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${PRODUCT_DB_USER}
+      POSTGRES_PASSWORD: ${PRODUCT_DB_PASSWORD}
+      POSTGRES_DB: ${PRODUCT_DB_NAME}
+    volumes:
+      - product_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${PRODUCT_DB_USER}" ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    networks:
+      - brobar_net
+
+  order_db:
+    container_name: order_db
+    image: postgres:14
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${ORDER_DB_USER}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD}
+      POSTGRES_DB: ${ORDER_DB_NAME}
+    volumes:
+      - order_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${ORDER_DB_USER} -d ${ORDER_DB_NAME}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - brobar_net
+
+  user_db:
+    container_name: "user_db"
+    image: postgres:14
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+      POSTGRES_DB: ${USER_DB_NAME}
+    volumes:
+      - user_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${USER_DB_USER}" ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    networks:
+      - brobar_net
+
+  product-service:
+    build:
+      context: backend
+      dockerfile: product-service/app.dockerfile
+    container_name: brobar_product
+    env_file: .env
+    environment:
+      DB_HOST: product_db
+      DB_USER: ${PRODUCT_DB_USER}
+      DB_PASSWORD: ${PRODUCT_DB_PASSWORD}
+      DB_NAME: ${PRODUCT_DB_NAME}
+      MIGRATIONS_PATH: /app/migrations
+      SERVICE_NAME: product
+      DB_SSLMODE: ${DB_SSLMODE}
+      PRODUCT_PORT: ${PRODUCT_PORT}
+      SERVICE_PORT: ${PRODUCT_PORT}
+    depends_on:
+      product_db:
+        condition: service_healthy
+    expose:
+      - "${PRODUCT_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: backend
+      dockerfile: order-service/app.dockerfile
+    container_name: brobar_order
+    env_file: .env
+    environment:
+      DB_HOST: order_db
+      DB_USER: ${ORDER_DB_USER}
+      DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      DB_NAME: ${ORDER_DB_NAME}
+      MIGRATIONS_PATH: /app/migrations
+      SERVICE_NAME: order
+      DB_SSLMODE: ${DB_SSLMODE}
+      ORDER_PORT: ${ORDER_PORT}
+      SERVICE_PORT: ${ORDER_PORT}
+    depends_on:
+      order_db:
+        condition: service_healthy
+    expose:
+      - "${ORDER_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: backend
+      dockerfile: user-service/app.dockerfile
+    container_name: brobar_user
+    env_file: .env
+    environment:
+      DB_HOST: user_db
+      DB_USER: ${USER_DB_USER}
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+      DB_NAME: ${USER_DB_NAME}
+      MIGRATIONS_PATH: /app/migrations
+      SERVICE_NAME: user
+      DB_SSLMODE: ${DB_SSLMODE}
+      USER_PORT: ${USER_PORT}
+      SERVICE_PORT: ${USER_PORT}
+    depends_on:
+      user_db:
+        condition: service_healthy
+    expose:
+      - "${USER_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  file-service:
+    build:
+      context: backend
+      dockerfile: file-service/app.dockerfile
+    container_name: brobar_file
+    env_file: .env
+    environment:
+      FILE_PORT: ${FILE_PORT}
+      SERVICE_PORT: ${FILE_PORT}
+    expose:
+      - "${FILE_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  gateway-service:
+    build:
+      context: backend
+      dockerfile: gateway-service/app.dockerfile
+    container_name: brobar_gateway
+    env_file: .env
+    environment:
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      SERVICE_PORT: ${GATEWAY_PORT}
+    expose:
+      - "${GATEWAY_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  telegram-service:
+    build:
+      context: backend
+      dockerfile: telegram-service/app.dockerfile
+    container_name: brobar_telegram
+    env_file: .env
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+      TELEGRAM_PORT: ${TELEGRAM_PORT}
+      SERVICE_PORT: ${TELEGRAM_PORT}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  syrve-service:
+    build:
+      context: backend
+      dockerfile: syrve-service/app.dockerfile
+    container_name: brobar_syrve
+    env_file: .env
+    environment:
+      SYRVE_PORT: ${SYRVE_PORT}
+      SERVICE_PORT: ${SYRVE_PORT}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: app.dockerfile
+    container_name: brobar_frontend
+    ports:
+      - "3005:3000"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  admin-panel:
+    build:
+      context: admin
+      dockerfile: app.dockerfile
+    container_name: brobar_admin
+    ports:
+      - "4000:4000"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+volumes:
+  product_db:
+  user_db:
+  order_db:
+
+
+networks:
+  brobar_net:

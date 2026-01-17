@@ -1,0 +1,7 @@
+./tmp
+./uploads
+/tmp
+/uploads
+.idea/
+.air.toml
+.env

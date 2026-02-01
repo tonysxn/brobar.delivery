@@ -3,7 +3,6 @@ package api
 import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/compress"
-	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/tonysanin/brobar/pkg/response"
 	"github.com/tonysanin/brobar/web-service/internal/api/handlers"
 	"github.com/tonysanin/brobar/web-service/internal/services"
@@ -29,8 +28,6 @@ func NewServer(settingService *services.SettingService, reviewService *services.
 	s.app.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
 	}))
-
-	s.app.Use(cors.New())
 
 	s.SetupRoutes()
 

@@ -16,7 +16,7 @@ type Server struct {
 
 func NewServer(fileService *services.FileService) *Server {
 	s := &Server{
-		app:         fiber.New(fiber.Config{AppName: "File Service"}),
+		app:         fiber.New(fiber.Config{AppName: "File Service", BodyLimit: 10 * 1024 * 1024}),
 		fileService: fileService,
 	}
 

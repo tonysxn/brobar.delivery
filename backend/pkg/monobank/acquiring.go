@@ -1,11 +1,13 @@
 package monobank
 
 type Acquiring struct {
-	xToken string
+	xToken       string
+	publicDomain string
 }
 
-func NewAcquiring(xToken string) *Acquiring {
+func NewAcquiring(xToken string, publicDomain string) *Acquiring {
 	return &Acquiring{
-		xToken: xToken,
+		xToken:       xToken,
+		publicDomain: publicDomain,
 	}
 }

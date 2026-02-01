@@ -90,10 +90,8 @@ func (h *ProductHandler) CreateProduct(c fiber.Ctx) error {
 		return response.BadRequest(c, err)
 	}
 
-	fileHeader, err := c.FormFile("image")
-	if err != nil {
-		return response.BadRequest(c, errors.New("image is required"))
-	}
+	// Image is optional - can be either a file upload or image path in request body
+	fileHeader, _ := c.FormFile("image")
 
 	if err := req.Validate(); err != nil {
 		return response.BadRequest(c, err)
@@ -101,7 +99,7 @@ func (h *ProductHandler) CreateProduct(c fiber.Ctx) error {
 
 	product := req.ToModel()
 
-	err = h.service.CreateProduct(c.Context(), product, fileHeader)
+	err := h.service.CreateProduct(c.Context(), product, fileHeader)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, err)
 	}

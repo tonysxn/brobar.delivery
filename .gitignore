@@ -5,3 +5,4 @@
 .idea/
 .air.toml
 .env
+.DS_STORE

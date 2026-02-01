@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
+ARG NEXT_PUBLIC_GATEWAY_URL
+ENV NEXT_PUBLIC_GATEWAY_URL=${NEXT_PUBLIC_GATEWAY_URL}
 RUN npm run build
 
 FROM node:20-alpine AS runner

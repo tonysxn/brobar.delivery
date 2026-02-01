@@ -12,7 +12,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { Button } from "@/components/ui/button";
 import { OrderDetailsDialog } from "./order-details-dialog";
-import { Loader2, MapPin, Truck, Store, CreditCard, Banknote, Eye, DoorOpen } from "lucide-react";
+import { Loader2, MapPin, Truck, Store, CreditCard, Banknote, Eye, DoorOpen, Landmark } from "lucide-react";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
     "pending": { label: "New", color: "bg-blue-500" },
@@ -171,19 +171,29 @@ export default function OrdersPage() {
             header: "Payment",
             cell: ({ row }) => {
                 const order = row.original;
+
+                if (order.payment_method === "card") {
+                    return (
+                        <div className="flex items-center gap-1.5 text-sm">
+                            <CreditCard className="w-3.5 h-3.5 text-purple-500" />
+                            <span>Card</span>
+                        </div>
+                    );
+                }
+
+                if (order.payment_method === "bank") {
+                    return (
+                        <div className="flex items-center gap-1.5 text-sm">
+                            <Landmark className="w-3.5 h-3.5 text-blue-500" />
+                            <span>Bank</span>
+                        </div>
+                    );
+                }
+
                 return (
                     <div className="flex items-center gap-1.5 text-sm">
-                        {order.payment_method === "card" ? (
-                            <>
-                                <CreditCard className="w-3.5 h-3.5 text-purple-500" />
-                                <span>Card</span>
-                            </>
-                        ) : (
-                            <>
-                                <Banknote className="w-3.5 h-3.5 text-green-500" />
-                                <span>Cash</span>
-                            </>
-                        )}
+                        <Banknote className="w-3.5 h-3.5 text-green-500" />
+                        <span>Cash</span>
                     </div>
                 );
             }

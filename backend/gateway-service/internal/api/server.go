@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/compress"
@@ -24,6 +25,7 @@ type Server struct {
 	fileService     string
 	webService      string
 	orderService    string
+	paymentService  string
 	jwtSecret       []byte
 }
 
@@ -34,13 +36,14 @@ type ServerConfig struct {
 	SyrveServiceURL    string
 	FileServiceURL     string
 	WebServiceURL      string
+	PaymentServiceURL  string
 	OrderServiceURL    string
 	JWTSecret          []byte
 }
 
 func NewServer(cfg ServerConfig) *Server {
 	s := &Server{
-		app:             fiber.New(fiber.Config{AppName: "Gateway Service"}),
+		app:             fiber.New(fiber.Config{AppName: "Gateway Service", BodyLimit: 10 * 1024 * 1024}),
 		userService:     cfg.UserServiceURL,
 		productService:  cfg.ProductServiceURL,
 		telegramService: cfg.TelegramServiceURL,
@@ -48,6 +51,7 @@ func NewServer(cfg ServerConfig) *Server {
 		fileService:     cfg.FileServiceURL,
 		webService:      cfg.WebServiceURL,
 		orderService:    cfg.OrderServiceURL,
+		paymentService:  cfg.PaymentServiceURL,
 		jwtSecret:       []byte(cfg.JWTSecret),
 	}
 
@@ -132,6 +136,12 @@ func (s *Server) ProxyToOrderService(c fiber.Ctx) error {
 	return s.proxyWithCORS(c, s.orderService+c.OriginalURL())
 }
 
+func (s *Server) ProxyToPaymentService(c fiber.Ctx) error {
+	path := c.OriginalURL()
+	targetURL := s.paymentService + strings.TrimPrefix(path, "/payment-service")
+	return s.proxyWithCORS(c, targetURL)
+}
+
 func (s *Server) SetupRoutes() {
 	s.app.Get("/health", func(c fiber.Ctx) error {
 		return response.Success(c, fiber.Map{
@@ -147,15 +157,15 @@ func (s *Server) SetupRoutes() {
 	})
 
 	// Telegram webhook
-	telegramGroupAuthorized := s.app.Group("webhooks/telegram")
-	telegramGroupAuthorized.Use(jwtMiddleware)
-	telegramGroupAuthorized.Post("/", s.ProxyToTelegramService, middleware.AdminOnly)
+	telegramGroup := s.app.Group("webhooks/telegram")
+	telegramGroup.Post("/", s.ProxyToTelegramService)
 
 	// File
 	fileGroup := s.app.Group("/files")
 	fileGroup.Get("/:id", s.ProxyToFileService)
 	fileGroup.Use(jwtMiddleware)
 	fileGroup.Post("/", s.ProxyToFileService, middleware.AdminOnly)
+	fileGroup.Post("/upload", s.ProxyToFileService, middleware.AdminOnly)
 
 	// Server Time
 	s.app.Get("/time", s.ProxyToWebService)
@@ -182,6 +192,10 @@ func (s *Server) SetupRoutes() {
 	ordersGroup.Get("/:id", s.ProxyToOrderService, middleware.AdminOnly)
 	ordersGroup.Put("/:id", s.ProxyToOrderService, middleware.AdminOnly)
 	ordersGroup.Delete("/:id", s.ProxyToOrderService, middleware.AdminOnly)
+
+	// Payment Service
+	paymentGroup := s.app.Group("/payment-service")
+	paymentGroup.Post("/webhooks/monobank", s.ProxyToPaymentService)
 
 	// Syrve
 	syrveGroupAuthorized := s.app.Group("/syrve")
@@ -243,5 +257,8 @@ func (s *Server) SetupRoutes() {
 }
 
 func (s *Server) Listen(address string) error {
+	for _, route := range s.app.GetRoutes() {
+		log.Printf("Route: %s %s", route.Method, route.Path)
+	}
 	return s.app.Listen(address)
 }

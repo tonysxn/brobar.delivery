@@ -7,8 +7,10 @@ import (
 
 	"github.com/tonysanin/brobar/order-service/internal/api"
 	"github.com/tonysanin/brobar/order-service/internal/clients"
+	"github.com/tonysanin/brobar/order-service/internal/consumer"
 	"github.com/tonysanin/brobar/order-service/internal/repositories"
 	"github.com/tonysanin/brobar/order-service/internal/services"
+	"github.com/tonysanin/brobar/pkg/clients/payment"
 	"github.com/tonysanin/brobar/pkg/helpers"
 	"github.com/tonysanin/brobar/pkg/rabbitmq"
 
@@ -18,10 +20,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("Warning: No .env file found or failed to load")
-	}
+	_ = godotenv.Load(".env")
 
 	port := helpers.GetEnv("ORDER_PORT", "3001")
 
@@ -45,6 +44,7 @@ func main() {
 	// Initialize clients
 	productClient := clients.NewProductClient()
 	webClient := clients.NewWebClient()
+	paymentClient := payment.NewClient(helpers.GetEnv("PAYMENT_SERVICE_URL", "http://payment-service:8081"))
 
 	// Initialize Message Broker
 	producer := rabbitmq.NewProducer()
@@ -56,7 +56,19 @@ func main() {
 
 	// Initialize services
 	validationService := services.NewValidationService(productClient, webClient)
-	orderService := services.NewOrderService(orderRepository, orderItemsRepository, productClient, validationService, producer)
+	orderService := services.NewOrderService(orderRepository, orderItemsRepository, productClient, paymentClient, validationService, producer)
+
+	// Initialize Consumer
+	rabbitURL := helpers.GetEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+	paymentConsumer, err := consumer.NewPaymentConsumer(rabbitURL, orderService)
+	if err != nil {
+		log.Fatalf("Failed to initialize payment consumer: %v", err)
+	}
+
+	if err := paymentConsumer.Start(); err != nil {
+		log.Fatalf("Failed to start payment consumer: %v", err)
+	}
+	defer paymentConsumer.Stop()
 
 	server := api.NewServer(orderService)
 

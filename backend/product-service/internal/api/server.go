@@ -29,7 +29,8 @@ func NewServer(
 ) *Server {
 	s := &Server{
 		app: fiber.New(fiber.Config{
-			AppName: "Product Service",
+			AppName:   "Product Service",
+			BodyLimit: 10 * 1024 * 1024,
 		}),
 		productService:        productService,
 		categoryService:       categoryService,

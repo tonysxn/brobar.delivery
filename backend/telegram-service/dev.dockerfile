@@ -1,12 +1,11 @@
 FROM golang:1.24-alpine
 
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk update && \
-    apk --no-cache add git bash curl tdlib tdlib-dev gcompat
+RUN apk update && \
+    apk --no-cache add git bash curl
 
 WORKDIR /app
 
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
 
 RUN go install github.com/air-verse/air@v1.61.0
 

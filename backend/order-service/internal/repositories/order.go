@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	customerrors "github.com/tonysanin/brobar/order-service/internal/errors"
 	"github.com/tonysanin/brobar/order-service/internal/models"
-	"log"
-	"time"
 )
 
 type OrderRepository struct {
@@ -104,7 +105,11 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, id uuid.UUID) (*mode
 			o.cutlery as "order.cutlery",
 			o.delivery_cost as "order.delivery_cost",
 			o.delivery_door as "order.delivery_door",
+			o.delivery_door_price as "order.delivery_door_price",
 			o.delivery_type_id as "order.delivery_type_id",
+			o.payment_method as "order.payment_method",
+			o.zone as "order.zone",
+			o.invoice_id as "order.invoice_id",
 
 			oi.id as "items.id",
 			oi.order_id as "items.order_id",
@@ -132,6 +137,68 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, id uuid.UUID) (*mode
 	defer cancel()
 
 	rows, err := r.db.QueryxContext(ctx, query, id)
+	return r.scanOrder(err, rows, ctx)
+}
+
+func (r *OrderRepository) GetOrderByInvoiceID(ctx context.Context, invoiceID string) (*models.Order, error) {
+	const query = `
+		SELECT
+			o.id as "order.id",
+			o.user_id as "order.user_id",
+			o.status_id as "order.status_id",
+			o.total_price as "order.total_price",
+			o.created_at as "order.created_at",
+			o.updated_at as "order.updated_at",
+			o.address as "order.address",
+			o.entrance as "order.entrance",
+			o.floor as "order.floor",
+			o.flat as "order.flat",
+			o.address_wishes as "order.address_wishes",
+			o.name as "order.name",
+			o.phone as "order.phone",
+			o.time as "order.time",
+			o.email as "order.email",
+			o.wishes as "order.wishes",
+			o.promo as "order.promo",
+			o.coords as "order.coords",
+			o.cutlery as "order.cutlery",
+			o.delivery_cost as "order.delivery_cost",
+			o.delivery_door as "order.delivery_door",
+			o.delivery_door_price as "order.delivery_door_price",
+			o.delivery_type_id as "order.delivery_type_id",
+			o.payment_method as "order.payment_method",
+			o.zone as "order.zone",
+			o.invoice_id as "order.invoice_id",
+
+			oi.id as "items.id",
+			oi.order_id as "items.order_id",
+			oi.product_id as "items.product_id",
+			oi.external_product_id as "items.external_product_id",
+			oi.name as "items.name",
+			oi.price as "items.price",
+			oi.quantity as "items.quantity",
+			oi.total_price as "items.total_price",
+			oi.weight as "items.weight",
+			oi.total_weight as "items.total_weight",
+
+			oi.product_variation_group_id as "items.product_variation_group_id",
+			oi.product_variation_group_name as "items.product_variation_group_name",
+			oi.product_variation_id as "items.product_variation_id",
+			oi.product_variation_external_id as "items.product_variation_external_id",
+			oi.product_variation_name as "items.product_variation_name"
+
+		FROM orders o
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		WHERE o.invoice_id = $1
+	`
+	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
+	defer cancel()
+
+	rows, err := r.db.QueryxContext(ctx, query, invoiceID)
+	return r.scanOrder(err, rows, ctx)
+}
+
+func (r *OrderRepository) scanOrder(err error, rows *sqlx.Rows, ctx context.Context) (*models.Order, error) {
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return nil, fmt.Errorf("database query timed out")
@@ -149,60 +216,174 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, id uuid.UUID) (*mode
 	first := true
 	for rows.Next() {
 		var (
-			o  models.Order
-			oi models.OrderItem
+			o models.Order
+
+			// Temporary variables for nullable fields
+			userID                *uuid.UUID
+			entrance, floor, flat *string
+			addressWishes, phone  *string
+			email, wishes, promo  *string
+			coords, zone          *string
+			paymentMethod         *string
+			cutlery               *int
+			deliveryCost          *float64
+			deliveryDoor          *bool
+			deliveryDoorPrice     *float64
+
+			oiID                *uuid.UUID
+			oiOrderID           *uuid.UUID
+			oiProductID         *uuid.UUID
+			oiExternalProductID *string
+			oiName              *string
+			oiPrice             *float64
+			oiQuantity          *int
+			oiTotalPrice        *float64
+			oiWeight            *float64
+			oiTotalWeight       *float64
+
+			variationGroupID    *uuid.UUID
+			variationGroupName  *string
+			variationID         *uuid.UUID
+			variationExternalID *string
+			variationName       *string
 		)
+
 		err := rows.Scan(
 			&o.ID,
-			&o.UserID,
+			&userID,
 			&o.StatusID,
 			&o.TotalPrice,
 			&o.CreatedAt,
 			&o.UpdatedAt,
 			&o.Address,
-			&o.Entrance,
-			&o.Floor,
-			&o.Flat,
-			&o.AddressWishes,
+			&entrance,
+			&floor,
+			&flat,
+			&addressWishes,
 			&o.Name,
-			&o.Phone,
+			&phone,
 			&o.Time,
-			&o.Email,
-			&o.Wishes,
-			&o.Promo,
-			&o.Coords,
-			&o.Cutlery,
-			&o.DeliveryCost,
-			&o.DeliveryDoor,
+			&email,
+			&wishes,
+			&promo,
+			&coords,
+			&cutlery,
+			&deliveryCost,
+			&deliveryDoor,
+			&deliveryDoorPrice,
 			&o.DeliveryTypeID,
+			&paymentMethod,
+			&zone,
+			&o.InvoiceID,
 
-			&oi.ID,
-			&oi.OrderID,
-			&oi.ProductID,
-			&oi.ExternalProductID,
-			&oi.Name,
-			&oi.Price,
-			&oi.Quantity,
-			&oi.TotalPrice,
-			&oi.Weight,
-			&oi.TotalWeight,
+			&oiID,
+			&oiOrderID,
+			&oiProductID,
+			&oiExternalProductID,
+			&oiName,
+			&oiPrice,
+			&oiQuantity,
+			&oiTotalPrice,
+			&oiWeight,
+			&oiTotalWeight,
 
-			&oi.ProductVariationGroupID,
-			&oi.ProductVariationGroupName,
-			&oi.ProductVariationID,
-			&oi.ProductVariationExternalID,
-			&oi.ProductVariationName,
+			&variationGroupID,
+			&variationGroupName,
+			&variationID,
+			&variationExternalID,
+			&variationName,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
 		if first {
 			order = o
+			order.UserID = userID
+			if entrance != nil {
+				order.Entrance = *entrance
+			}
+			if floor != nil {
+				order.Floor = *floor
+			}
+			if flat != nil {
+				order.Flat = *flat
+			}
+			if addressWishes != nil {
+				order.AddressWishes = *addressWishes
+			}
+			if phone != nil {
+				order.Phone = *phone
+			}
+			if email != nil {
+				order.Email = *email
+			}
+			if wishes != nil {
+				order.Wishes = *wishes
+			}
+			if promo != nil {
+				order.Promo = *promo
+			}
+			if coords != nil {
+				order.Coords = *coords
+			}
+			if cutlery != nil {
+				order.Cutlery = *cutlery
+			}
+			if deliveryCost != nil {
+				order.DeliveryCost = *deliveryCost
+			}
+			if deliveryDoor != nil {
+				order.DeliveryDoor = *deliveryDoor
+			}
+			if deliveryDoorPrice != nil {
+				order.DeliveryDoorPrice = *deliveryDoorPrice
+			}
+			if paymentMethod != nil {
+				order.PaymentMethod = *paymentMethod
+			}
+			order.Zone = zone
 			first = false
 		}
 
-		if oi.ID != uuid.Nil {
+		if oiID != nil {
+			oi := models.OrderItem{
+				ID: *oiID,
+			}
+			if oiOrderID != nil {
+				oi.OrderID = *oiOrderID
+			}
+			if oiProductID != nil {
+				oi.ProductID = *oiProductID
+			}
+			if oiExternalProductID != nil {
+				oi.ExternalProductID = *oiExternalProductID
+			}
+			if oiName != nil {
+				oi.Name = *oiName
+			}
+			if oiPrice != nil {
+				oi.Price = *oiPrice
+			}
+			if oiQuantity != nil {
+				oi.Quantity = *oiQuantity
+			}
+			if oiTotalPrice != nil {
+				oi.TotalPrice = *oiTotalPrice
+			}
+			if oiWeight != nil {
+				oi.Weight = *oiWeight
+			}
+			if oiTotalWeight != nil {
+				oi.TotalWeight = *oiTotalWeight
+			}
+
+			oi.ProductVariationGroupID = variationGroupID
+			oi.ProductVariationGroupName = variationGroupName
+			oi.ProductVariationID = variationID
+			oi.ProductVariationExternalID = variationExternalID
+			oi.ProductVariationName = variationName
+
 			itemsMap[oi.ID] = oi
 		}
 	}
@@ -223,14 +404,14 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) 
 	const query = `
 		INSERT INTO orders (
 			id, user_id, status_id, total_price, created_at, updated_at,
-			address, entrance, floor, flat, address_wishes,
-			name, phone, time, email, wishes, promo, coords,
-			cutlery, delivery_cost, delivery_door, delivery_type_id
+			address, entrance, floor, flat, address_wishes, name, phone,
+			time, email, wishes, promo, coords, cutlery, delivery_cost,
+			delivery_door, delivery_door_price, delivery_type_id, payment_method, zone, invoice_id
 		) VALUES (
 			:id, :user_id, :status_id, :total_price, :created_at, :updated_at,
-			:address, :entrance, :floor, :flat, :address_wishes,
-			:name, :phone, :time, :email, :wishes, :promo, :coords,
-			:cutlery, :delivery_cost, :delivery_door, :delivery_type_id
+			:address, :entrance, :floor, :flat, :address_wishes, :name, :phone,
+			:time, :email, :wishes, :promo, :coords, :cutlery, :delivery_cost,
+			:delivery_door, :delivery_door_price, :delivery_type_id, :payment_method, :zone, :invoice_id
 		)
 	`
 
@@ -280,7 +461,11 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, order *models.Order) 
 			cutlery = :cutlery,
 			delivery_cost = :delivery_cost,
 			delivery_door = :delivery_door,
-			delivery_type_id = :delivery_type_id
+			delivery_door_price = :delivery_door_price,
+			delivery_type_id = :delivery_type_id,
+			payment_method = :payment_method,
+			zone = :zone,
+			invoice_id = :invoice_id
 		WHERE id = :id
 	`
 

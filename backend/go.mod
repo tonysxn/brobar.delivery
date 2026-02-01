@@ -12,12 +12,13 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mozillazg/go-unidecode v0.2.0
 	github.com/streadway/amqp v1.1.0
-	github.com/zelenin/go-tdlib v0.7.6
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.39.0
 )
 
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/getkin/kin-openapi v0.127.0 // indirect
@@ -35,6 +36,7 @@ require (
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

@@ -9,10 +9,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("Warning: No .env file found or failed to load")
-	}
+	_ = godotenv.Load(".env")
 
 	port := helpers.GetEnv("GATEWAY_PORT", "8000")
 
@@ -35,6 +32,9 @@ func main() {
 		WebServiceURL: helpers.GetEnv("WEB_HOST", "http://web-service-dev") +
 			":" +
 			helpers.GetEnv("WEB_PORT", "3006"),
+		PaymentServiceURL: helpers.GetEnv("PAYMENT_SERVICE_HOST", "http://payment-service-dev") +
+			":" +
+			helpers.GetEnv("PAYMENT_SERVICE_PORT", "8081"),
 		OrderServiceURL: helpers.GetEnv("ORDER_HOST", "http://order-service-dev") +
 			":" +
 			helpers.GetEnv("ORDER_PORT", "3001"),

@@ -2,24 +2,15 @@
 
 import {
     Package,
-    ConciergeBell,
-    Hamburger,
-    Drumstick,
-    Soup,
-    Salad,
-    Sandwich,
-    UtensilsCrossed,
-    Beer,
-    Milk,
     ChevronDown,
     ChevronUp,
     MapPin, Phone, Clock2,
-    Ham,
     LucideIcon,
     Plus,
     Minus,
     X,
-    AlertCircle
+    AlertCircle,
+    icons
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import Preloader from "@/components/preloader";
@@ -35,19 +26,19 @@ import { Skeleton, MenuSkeleton } from "@/components/ui/skeleton";
 import { useShopStatus } from "@/hooks/use-shop-status";
 import { formatWorkingHours } from "@/lib/working-hours";
 
-// Icon mapping for categories
-const iconMap: Record<string, LucideIcon> = {
-    ConciergeBell,
-    Hamburger,
-    Drumstick,
-    Soup,
-    Salad,
-    Sandwich,
-    UtensilsCrossed,
-    Beer,
-    Milk,
-    Ham,
-    Package,
+// Helper to convert icon name to PascalCase (e.g., "utensils" -> "Utensils", "concierge-bell" -> "ConciergeBell")
+const toPascalCase = (str: string): string => {
+    return str
+        .split(/[-_]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join('');
+};
+
+// Dynamic icon getter - any lucide icon name will work
+const getIconByName = (iconName: string | undefined | null): LucideIcon => {
+    if (!iconName) return Package;
+    const pascalName = toPascalCase(iconName);
+    return (icons as Record<string, LucideIcon>)[pascalName] || Package;
 };
 
 interface Category {
@@ -59,7 +50,7 @@ interface Category {
     products: Product[];
 }
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000";
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 const FILE_URL = process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:3001";
 
 export default function Menu() {
@@ -156,12 +147,12 @@ export default function Menu() {
     };
 
     const getIcon = (iconName: string): LucideIcon => {
-        return iconMap[iconName] || Package;
+        return getIconByName(iconName);
     };
 
     const getImageUrl = (imagePath: string) => {
         if (!imagePath) return "https://placehold.co/250x200?text=No+Image";
-        return `${FILE_URL}/files/${imagePath}`;
+        return `${FILE_URL}/${imagePath}`;
     };
 
     // Check if product has required variations
@@ -469,7 +460,7 @@ export default function Menu() {
                 />
 
                 {/* Modal */}
-                <div className={`relative bg-gradient-to-b from-[#1d1d1d] to-[#141414] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transition-all duration-150 ${variationModalOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}>
+                <div className={`relative bg-gradient-to-b from-[#1d1d1d] to-[#141414] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transition duration-150 will-change-transform ${variationModalOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}>
                     {/* Close button */}
                     <button
                         onClick={() => setVariationModalOpen(false)}
@@ -555,7 +546,7 @@ export default function Menu() {
                             {/* Confirm button */}
                             <Button
                                 onClick={confirmVariationSelection}
-                                className="w-full h-14 text-lg font-bold text-black bg-primary hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/25 transition-all duration-100 hover:shadow-primary/40 hover:scale-[1.02] cursor-pointer"
+                                className="w-full h-14 text-lg font-bold text-black bg-primary hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/25 transition duration-100 hover:shadow-primary/40 hover:scale-[1.02] cursor-pointer"
                             >
                                 До кошику
                             </Button>

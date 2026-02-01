@@ -23,7 +23,7 @@ const formatPrice = (price: number) => `${price} ₴`;
 const FILE_URL = process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:3001";
 function getImageUrl(imagePath: string) {
     if (!imagePath) return "https://placehold.co/80x80?text=No+Image";
-    return `${FILE_URL}/files/${imagePath}`;
+    return `${FILE_URL}/${imagePath}`;
 }
 
 export default function CheckoutPage() {
@@ -71,7 +71,7 @@ export default function CheckoutPage() {
     const [timeVal, setTimeVal] = useState("");
 
     // Payment
-    const [paymentMethod, setPaymentMethod] = useState<"online" | "cash">("online");
+    const [paymentMethod, setPaymentMethod] = useState<"bank" | "cash">("bank");
 
     // Other
     const [cutleryCount, setCutleryCount] = useState(1);
@@ -257,7 +257,7 @@ export default function CheckoutPage() {
                 client_total: total
             };
 
-            const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000";
+            const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
             const response = await fetch(`${GATEWAY_URL}/orders`, {
                 method: "POST",
                 headers: {
@@ -274,6 +274,19 @@ export default function CheckoutPage() {
             }
 
             toast.success("Замовлення оформлено успішно!");
+
+            console.log("API Response:", result);
+            console.log("Payment URL check:", result.data?.payment_url);
+
+            // Check for payment URL
+            if (result.data && result.data.payment_url) {
+                // Clear cart (optional, maybe keep it until payment confirmed?) 
+                // For now, let's just redirect
+                // TODO: clearCart() 
+                window.location.href = result.data.payment_url;
+                return;
+            }
+
             // Clear cart and redirect
             // TODO: clearCart()
             router.push("/menu");
@@ -290,7 +303,7 @@ export default function CheckoutPage() {
     const inputClasses = "w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-white placeholder:text-gray-500";
 
     return (
-        <div className="min-h-screen pt-24 pb-12 px-2 md:px-8 max-w-7xl mx-auto">
+        <div className="min-h-screen pt-18 pb-12 px-2 md:px-8 max-w-7xl mx-auto">
             <Link href="/menu" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors cursor-pointer">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Назад до меню
@@ -628,20 +641,20 @@ export default function CheckoutPage() {
                         <section className="bg-white/5 rounded-2xl p-3 md:p-6 border border-white/10">
                             <h2 className="text-xl font-bold mb-4">Оплата</h2>
                             <div className="space-y-3">
-                                <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "online"
-                                    ? "bg-primary/10 border-primary"
-                                    : "bg-white/5 border-white/10 hover:border-white/20"
+                                <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "bank"
+                                    ? "bg-white/10 border-primary text-white"
+                                    : "bg-white/5 border-white/10 hover:border-white/20 text-gray-300"
                                     }`}>
                                     <input
                                         type="radio"
-                                        name="payment"
-                                        value="online"
-                                        checked={paymentMethod === "online"}
-                                        onChange={() => setPaymentMethod("online")}
-                                        className="sr-only"
+                                        name="payment_method"
+                                        value="bank"
+                                        checked={paymentMethod === "bank"}
+                                        onChange={() => setPaymentMethod("bank")}
+                                        className="w-5 h-5 accent-primary bg-transparent border-white/20"
                                     />
-                                    <CreditCard className={`w-6 h-6 ${paymentMethod === "online" ? "text-primary" : "text-gray-400"}`} />
-                                    <span className={paymentMethod === "online" ? "font-bold text-white" : "text-gray-300"}>
+                                    <CreditCard className={`w-6 h-6 ${paymentMethod === "bank" ? "text-primary" : "text-gray-400"}`} />
+                                    <span className={paymentMethod === "bank" ? "font-bold text-white" : "text-gray-300"}>
                                         Безготівкова на сайті
                                     </span>
                                 </label>

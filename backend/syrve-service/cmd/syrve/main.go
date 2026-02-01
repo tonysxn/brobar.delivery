@@ -10,9 +10,7 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(".env"); err != nil {
-		log.Println("Warning: No .env file found or failed to load")
-	}
+	_ = godotenv.Load(".env")
 
 	apiLogin := helpers.GetEnv("SYRVE_TOKEN", "")
 	organizationID := helpers.GetEnv("SYRVE_ORGANIZATION", "")

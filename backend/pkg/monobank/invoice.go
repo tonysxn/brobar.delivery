@@ -69,6 +69,10 @@ type InvoiceData struct {
 }
 
 func (a Acquiring) CreateInvoice(invoice *Invoice) (*InvoiceData, error) {
+	if invoice.WebHookURL == "" {
+		invoice.WebHookURL = fmt.Sprintf("https://%s/api/webhooks/monobank", a.publicDomain)
+	}
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(invoice); err != nil {
 		return nil, err

@@ -56,7 +56,7 @@ func (r CreateOrderRequest) Validate() error {
 			string(models.DeliveryTypePickup),
 			string(models.DeliveryTypeDine),
 		)),
-		validation.Field(&r.PaymentMethod, validation.Required, validation.In("online", "cash")),
+		validation.Field(&r.PaymentMethod, validation.Required, validation.In("online", "cash", "bank")),
 		validation.Field(&r.Time, validation.Required),
 		validation.Field(&r.Items, validation.Required, validation.Length(1, 100)),
 		validation.Field(&r.ClientTotal, validation.Required, validator.IsNonNegative),
@@ -113,7 +113,7 @@ func (r UpdateOrderRequest) Validate() error {
 			string(models.DeliveryTypePickup),
 			string(models.DeliveryTypeDine),
 		)),
-		validation.Field(&r.PaymentMethod, validation.In("online", "cash")),
+		validation.Field(&r.PaymentMethod, validation.In("online", "cash", "bank")),
 		validation.Field(&r.Time, validation.Required),
 		validation.Field(&r.Items, validation.Required, validation.Length(1, 100)),
 	)

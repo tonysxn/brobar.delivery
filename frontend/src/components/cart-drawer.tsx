@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/contexts/cart-context";
 import { useShopStatus } from "@/hooks/use-shop-status";
 import { X, ShoppingBag, Trash2, Plus, Minus } from "lucide-react";
@@ -12,28 +12,48 @@ const FILE_URL = process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:3001";
 
 function getImageUrl(imagePath: string) {
     if (!imagePath) return "https://placehold.co/80x80?text=No+Image";
-    return `${FILE_URL}/files/${imagePath}`;
+    return `${FILE_URL}/${imagePath}`;
 }
 
 export default function CartDrawer() {
     const { cart, isCartOpen, setIsCartOpen, removeFromCart, cartTotal, cartItemCount, updateQuantity } = useCart();
+    const [isFirefox, setIsFirefox] = useState(false);
+
+    useEffect(() => {
+        setIsFirefox(typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent));
+    }, []);
 
     useEffect(() => {
         if (isCartOpen) {
             toast.dismiss();
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
         }
+
+        return () => {
+            document.body.style.overflow = "";
+        };
     }, [isCartOpen]);
+
+    const backdropClass = isFirefox
+        ? "bg-black/70"
+        : "bg-black/60 backdrop-blur-sm";
+
+    const drawerClass = isFirefox
+        ? "bg-[#141414]"
+        : "bg-black/95 backdrop-blur-xl supports-[backdrop-filter]:bg-black/50";
 
     return (
         <div className={`fixed inset-0 z-[60] flex justify-end transition-all duration-150 ${isCartOpen ? "visible" : "invisible"}`}>
             {/* Backdrop with blur */}
             <div
-                className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-150 ${isCartOpen ? "opacity-100" : "opacity-0"}`}
+                className={`absolute inset-0 ${backdropClass} transition-opacity duration-150 will-change-opacity ${isCartOpen ? "opacity-100" : "opacity-0"}`}
                 onClick={() => setIsCartOpen(false)}
             />
 
             {/* Drawer */}
-            <div className={`relative w-full max-w-[420px] h-full bg-black/95 backdrop-blur-3xl supports-[backdrop-filter]:bg-black/50 border-l border-white/10 shadow-2xl flex flex-col transition-transform duration-200 ease-out ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className={`relative w-full max-w-[420px] h-full ${drawerClass} border-l border-white/10 shadow-2xl flex flex-col transition-transform duration-200 ease-out will-change-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-white/10">
                     <div className="flex items-center gap-3">

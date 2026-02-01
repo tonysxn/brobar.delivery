@@ -10,10 +10,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("Warning: No .env file found or failed to load")
-	}
+	_ = godotenv.Load(".env")
 
 	port := helpers.GetEnv("SERVER_PORT", "3001")
 

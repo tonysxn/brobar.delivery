@@ -113,6 +113,29 @@ services:
       - brobar_net
     restart: unless-stopped
 
+  payment-service-dev:
+    build:
+      context: backend
+      dockerfile: payment-service/dev.dockerfile
+    container_name: brobar_payment_dev
+    env_file:
+      - .env
+    environment:
+      PAYMENT_SERVICE_PORT: ${PAYMENT_SERVICE_PORT}
+      MONOBANK_TOKEN: ${MONOBANK_TOKEN}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+    volumes:
+      - ./backend:/app
+      - air_tmp:/app/tmp
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:${PAYMENT_SERVICE_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
   order-service-dev:
     build:
       context: backend
@@ -129,6 +152,7 @@ services:
       SERVICE_NAME: order
       DB_SSLMODE: ${DB_SSLMODE}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+      PAYMENT_SERVICE_URL: http://payment-service-dev:${PAYMENT_SERVICE_PORT}
     volumes:
       - ./backend:/app
       - air_tmp:/app/tmp
@@ -267,8 +291,8 @@ services:
       - "3005:3000"
     environment:
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      NEXT_PUBLIC_GATEWAY_URL: http://localhost:8000
-      NEXT_PUBLIC_FILE_URL: http://localhost:3001
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL}
+      NEXT_PUBLIC_FILE_URL: ${NEXT_PUBLIC_FILE_URL}
     networks:
       - brobar_net
     restart: unless-stopped
@@ -284,7 +308,7 @@ services:
     ports:
       - "4000:3000"
     environment:
-      NEXT_PUBLIC_GATEWAY_URL: http://localhost:8000
+      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL}
     networks:
       - brobar_net
     restart: unless-stopped
@@ -334,6 +358,26 @@ services:
         condition: service_healthy
     ports:
       - "${WEB_PORT}:${WEB_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  nginx-dev:
+    image: nginx:alpine
+    container_name: brobar_nginx_dev
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf.template:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    environment:
+      - NGINX_DOMAIN=${NGINX_DOMAIN}
+      - NGINX_ADMIN_DOMAIN=${NGINX_ADMIN_DOMAIN}
+    command: /bin/sh -c "envsubst '\$${NGINX_DOMAIN} \$${NGINX_ADMIN_DOMAIN}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - frontend-dev
+      - admin-panel-dev
     networks:
       - brobar_net
     restart: unless-stopped

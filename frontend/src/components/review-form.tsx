@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CheckCircle2 } from "lucide-react"
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000"
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export function ReviewForm() {
     const [foodRating, setFoodRating] = React.useState(0)

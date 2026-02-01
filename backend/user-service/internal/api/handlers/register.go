@@ -25,10 +25,10 @@ func (h *UserHandler) Register(c fiber.Ctx) error {
 	user := models.User{
 		Name:      req.Name,
 		Email:     req.Email,
-		Phone:     req.Phone,
+		Phone:     stringPtr(req.Phone),
 		Password:  req.Password,
-		PromoCard: req.PromoCard,
-		Address:   req.Address,
+		PromoCard: stringPtr(req.PromoCard),
+		Address:   stringPtr(req.Address),
 	}
 
 	err := h.service.CreateUser(c.Context(), &user)
@@ -77,4 +77,12 @@ func (h *UserHandler) Register(c fiber.Ctx) error {
 		},
 		"user": user.ToDTO(),
 	})
+}
+
+// stringPtr is a helper function to convert string to *string
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

@@ -124,7 +124,7 @@ export default function Header() {
                 />
 
                 {/* Drawer Content */}
-                <div className={`relative w-[300px] h-full bg-background border-l border-border p-6 shadow-xl flex flex-col gap-6 transition-transform duration-150 ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
+                <div className={`relative w-[300px] h-full bg-background border-l border-border p-6 shadow-xl flex flex-col gap-6 transition-transform duration-150 will-change-transform ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
                     <div className="flex justify-between items-center">
                         <span className="text-xl font-bold">Меню</span>
                         <div onClick={() => setIsMenuOpen(false)} className="cursor-pointer hover:opacity-70">

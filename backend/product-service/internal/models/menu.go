@@ -32,7 +32,7 @@ type MenuProduct struct {
 	Slug            string               `json:"slug" db:"slug"`
 	Description     *string              `json:"description,omitempty" db:"description"`
 	Price           float64              `json:"price" db:"price"`
-	Weight          *int                 `json:"weight" db:"weight"`
+	Weight          *float64             `json:"weight" db:"weight"`
 	CategoryID      uuid.UUID            `json:"-" db:"category_id"`
 	Sort            int                  `json:"sort" db:"sort"`
 	Hidden          bool                 `json:"hidden" db:"hidden"`

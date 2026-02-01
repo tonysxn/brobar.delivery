@@ -13,16 +13,22 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"; do
   sleep 2
 done
 
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<-EOSQL
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-        version bigint NOT NULL PRIMARY KEY,
-        dirty boolean NOT NULL
-    );
-EOSQL
 
 if [ -d "$MIGRATIONS_PATH" ]; then
   echo "Applying migrations from ${MIGRATIONS_PATH}"
-  migrate -path="$MIGRATIONS_PATH" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" up
+  CONNECTION="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+  if ! migrate -path="$MIGRATIONS_PATH" -database "$CONNECTION" up; then
+    echo "Migration failed. Checking for dirty state..."
+    DIRTY_VERSION=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT version FROM schema_migrations WHERE dirty = true LIMIT 1" | xargs)
+    if [ -n "$DIRTY_VERSION" ]; then
+      echo "Database is dirty at version $DIRTY_VERSION. Forcing and retrying..."
+      migrate -path="$MIGRATIONS_PATH" -database "$CONNECTION" force "$DIRTY_VERSION"
+      migrate -path="$MIGRATIONS_PATH" -database "$CONNECTION" up
+    else
+      echo "Migration failed with a non-dirty error. Check logs above."
+      exit 1
+    fi
+  fi
 fi
 
 exec "$@"

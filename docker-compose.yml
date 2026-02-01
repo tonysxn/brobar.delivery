@@ -2,8 +2,6 @@ services:
   rabbitmq:
     container_name: brobar_rabbitmq
     image: rabbitmq:3.11
-    ports:
-      - "${RABBITMQ_PORT}:5672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
@@ -99,6 +97,26 @@ services:
       - brobar_net
     restart: unless-stopped
 
+  payment-service:
+    build:
+      context: backend
+      dockerfile: payment-service/app.dockerfile
+    container_name: brobar_payment
+    env_file: .env
+    environment:
+      PAYMENT_SERVICE_PORT: ${PAYMENT_SERVICE_PORT}
+      MONOBANK_TOKEN: ${MONOBANK_TOKEN}
+      PUBLIC_DOMAIN: ${NGINX_DOMAIN}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - "${PAYMENT_SERVICE_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
   order-service:
     build:
       context: backend
@@ -115,6 +133,11 @@ services:
       DB_SSLMODE: ${DB_SSLMODE}
       ORDER_PORT: ${ORDER_PORT}
       SERVICE_PORT: ${ORDER_PORT}
+      WEB_SERVICE_URL: ${WEB_HOST_PROD}:${WEB_PORT}
+      PRODUCT_SERVICE_URL: ${PRODUCT_HOST_PROD}:${PRODUCT_PORT}
+      NGINX_DOMAIN: ${NGINX_DOMAIN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      PAYMENT_WEBHOOK_URL: https://${NGINX_DOMAIN}/api/payment-service/webhooks/monobank
     depends_on:
       order_db:
         condition: service_healthy
@@ -158,6 +181,8 @@ services:
     environment:
       FILE_PORT: ${FILE_PORT}
       SERVICE_PORT: ${FILE_PORT}
+    volumes:
+      - ./uploads:/app/uploads
     expose:
       - "${FILE_PORT}"
     networks:
@@ -173,8 +198,24 @@ services:
     environment:
       GATEWAY_PORT: ${GATEWAY_PORT}
       SERVICE_PORT: ${GATEWAY_PORT}
-    expose:
-      - "${GATEWAY_PORT}"
+      USER_HOST: ${USER_HOST_PROD}
+      USER_PORT: ${USER_PORT}
+      PRODUCT_HOST: ${PRODUCT_HOST_PROD}
+      PRODUCT_PORT: ${PRODUCT_PORT}
+      ORDER_HOST: ${ORDER_HOST_PROD}
+      ORDER_PORT: ${ORDER_PORT}
+      FILE_HOST: ${FILE_HOST_PROD}
+      FILE_PORT: ${FILE_PORT}
+      TELEGRAM_HOST: ${TELEGRAM_HOST_PROD}
+      TELEGRAM_PORT: ${TELEGRAM_PORT}
+      SYRVE_HOST: ${SYRVE_HOST_PROD}
+      SYRVE_PORT: ${SYRVE_PORT}
+      WEB_HOST: ${WEB_HOST_PROD}
+      WEB_PORT: ${WEB_PORT}
+      PAYMENT_SERVICE_HOST: http://payment-service
+      PAYMENT_SERVICE_PORT: ${PAYMENT_SERVICE_PORT}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     networks:
       - brobar_net
     restart: unless-stopped
@@ -216,9 +257,17 @@ services:
     build:
       context: frontend
       dockerfile: app.dockerfile
+      args:
+        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+        - NEXT_PUBLIC_GATEWAY_URL=https://${NGINX_DOMAIN}/api
+        - NEXT_PUBLIC_FILE_URL=https://${NGINX_DOMAIN}/api/files
     container_name: brobar_frontend
-    ports:
-      - "3005:3000"
+    env_file: .env
+    environment:
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      NEXT_PUBLIC_GATEWAY_URL: https://${NGINX_DOMAIN}/api
+      NEXT_PUBLIC_FILE_URL: https://${NGINX_DOMAIN}/api/files
     networks:
       - brobar_net
     restart: unless-stopped
@@ -227,9 +276,76 @@ services:
     build:
       context: admin
       dockerfile: app.dockerfile
+      args:
+        - NEXT_PUBLIC_GATEWAY_URL=https://${NGINX_ADMIN_DOMAIN}/api
     container_name: brobar_admin
+    env_file: .env
+    environment:
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_GATEWAY_URL: https://${NGINX_ADMIN_DOMAIN}/api
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  web_db:
+    container_name: web_db
+    image: postgres:14
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${WEB_DB_USER}
+      POSTGRES_PASSWORD: ${WEB_DB_PASSWORD}
+      POSTGRES_DB: ${WEB_DB_NAME}
+    volumes:
+      - web_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${WEB_DB_USER} -d ${WEB_DB_NAME}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - brobar_net
+
+  web-service:
+    build:
+      context: backend
+      dockerfile: web-service/app.dockerfile
+    container_name: brobar_web
+    env_file: .env
+    environment:
+      DB_HOST: web_db
+      DB_USER: ${WEB_DB_USER}
+      DB_PASSWORD: ${WEB_DB_PASSWORD}
+      DB_NAME: ${WEB_DB_NAME}
+      MIGRATIONS_PATH: /app/migrations
+      SERVICE_NAME: web
+      DB_SSLMODE: ${DB_SSLMODE}
+      WEB_PORT: ${WEB_PORT}
+      SERVICE_PORT: ${WEB_PORT}
+    depends_on:
+      web_db:
+        condition: service_healthy
+    expose:
+      - "${WEB_PORT}"
+    networks:
+      - brobar_net
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: brobar_nginx
     ports:
-      - "4000:4000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf.template:ro
+    environment:
+      - NGINX_DOMAIN=${NGINX_DOMAIN}
+      - NGINX_ADMIN_DOMAIN=${NGINX_ADMIN_DOMAIN}
+    command: /bin/sh -c "envsubst '\$${NGINX_DOMAIN} \$${NGINX_ADMIN_DOMAIN}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - frontend
+      - admin-panel
     networks:
       - brobar_net
     restart: unless-stopped
@@ -238,6 +354,7 @@ volumes:
   product_db:
   user_db:
   order_db:
+  web_db:
 
 
 networks:

@@ -95,7 +95,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             setChecking(false);
         };
 
-        checkAuth();
+        checkAuth().catch((e) => {
+            console.error("Auth check failed:", e);
+            setLoginData(null);
+            router.replace("/login");
+        });
     }, [hydrated, pathname]); // Removed loginData from dependencies to prevent loops
 
     if (checking) return null;

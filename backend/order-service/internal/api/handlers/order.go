@@ -75,7 +75,7 @@ func (h *OrderHandler) GetOrders(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, err)
 	}
 
-	resp := response.PaginatedResponse[models.Order]{
+	resp := response.PaginatedResponse[*models.Order]{
 		Data: orders,
 		Pagination: response.Pagination{
 			TotalCount: totalCount,

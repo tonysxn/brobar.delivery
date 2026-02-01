@@ -115,8 +115,8 @@ func (r *ProductRepository) CreateProduct(ctx context.Context, product *models.P
 			id, name, description, slug, price, weight, category_id, external_id,
 			hidden, alcohol, sold, image
 		) VALUES (
-			:id, :name, :description, :slug, :price, :weight, :category_id, :external_id,
-			:hidden, :alcohol, :sold, :image
+			$1, $2, $3, $4, $5, $6, $7, $8,
+			$9, $10, $11, $12
 		) ON CONFLICT (external_id) DO UPDATE SET
 			name = EXCLUDED.name,
 			description = EXCLUDED.description,
@@ -128,13 +128,19 @@ func (r *ProductRepository) CreateProduct(ctx context.Context, product *models.P
 			alcohol = EXCLUDED.alcohol,
 			sold = EXCLUDED.sold,
 			image = EXCLUDED.image
+		RETURNING id
 		`
 
 	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
 	defer cancel()
 
-	_, err := r.db.NamedExecContext(ctx, query, product)
-	if err != nil {
+	row := r.db.QueryRowxContext(ctx, query,
+		product.ID, product.Name, product.Description, product.Slug,
+		product.Price, product.Weight, product.CategoryID, product.ExternalID,
+		product.Hidden, product.Alcohol, product.Sold, product.Image,
+	)
+
+	if err := row.Scan(&product.ID); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("database query timed out")
 		}

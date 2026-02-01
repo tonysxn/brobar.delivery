@@ -84,6 +84,7 @@ export default function DeliveryMap({ onLocationSelect, cartTotal, children }: D
     const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
     const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
     const [mapCenter, setMapCenter] = useState(defaultCenter);
+    const [addressValue, setAddressValue] = useState("");
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -184,9 +185,9 @@ export default function DeliveryMap({ onLocationSelect, cartTotal, children }: D
             const address = place.formatted_address || place.name;
             checkLocation(location, address);
 
-            // Explicitly set input value to ensure persistence
-            if (inputRef.current && address) {
-                inputRef.current.value = address;
+            // Update the controlled input value
+            if (address) {
+                setAddressValue(address);
             }
 
             if (map) {
@@ -205,7 +206,20 @@ export default function DeliveryMap({ onLocationSelect, cartTotal, children }: D
                 lat: e.latLng.lat(),
                 lng: e.latLng.lng()
             };
-            checkLocation(location, "Вибрана точка");
+
+            // Use reverse geocoding to get the address
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: e.latLng }, (results, status) => {
+                let address = "Вибрана точка на мапі";
+
+                if (status === "OK" && results && results[0]) {
+                    address = results[0].formatted_address;
+                    // Update the controlled input value
+                    setAddressValue(address);
+                }
+
+                checkLocation(location, address);
+            });
         }
     };
 
@@ -229,6 +243,8 @@ export default function DeliveryMap({ onLocationSelect, cartTotal, children }: D
                 <input
                     ref={inputRef}
                     type="text"
+                    value={addressValue}
+                    onChange={(e) => setAddressValue(e.target.value)}
                     placeholder="Введіть адресу (наприклад: вул. Григорія Сковороди 64)"
                     className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-white placeholder:text-gray-500"
                 />

@@ -33,6 +33,8 @@ type Order struct {
 	DeliveryTypeID    DeliveryType `json:"delivery_type_id" db:"delivery_type_id"`
 	PaymentMethod     string       `json:"payment_method,omitempty" db:"payment_method"`
 	Zone              *string      `json:"zone,omitempty" db:"zone"`
+	InvoiceID         *string      `json:"invoice_id,omitempty" db:"invoice_id"`
+	PaymentURL        string       `json:"payment_url,omitempty" db:"-"`
 
 	Items []OrderItem `json:"items" db:"-"`
 }

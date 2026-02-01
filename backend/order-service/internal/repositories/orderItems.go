@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/tonysanin/brobar/order-service/internal/models"
@@ -18,9 +19,11 @@ func NewOrderItemRepository(db *sqlx.DB) *OrderItemRepository {
 func (r *OrderItemRepository) CreateOrderItem(ctx context.Context, item *models.OrderItem) error {
 	query := `
 		INSERT INTO order_items (
-			id, order_id, product_id, external_product_id, name, price, quantity, total_price, weight, total_weight
+			id, order_id, product_id, external_product_id, name, price, quantity, total_price, weight, total_weight,
+			product_variation_group_id, product_variation_group_name, product_variation_id, product_variation_external_id, product_variation_name
 		) VALUES (
-			:id, :order_id, :product_id, :external_product_id, :name, :price, :quantity, :total_price, :weight, :total_weight
+			:id, :order_id, :product_id, :external_product_id, :name, :price, :quantity, :total_price, :weight, :total_weight,
+			:product_variation_group_id, :product_variation_group_name, :product_variation_id, :product_variation_external_id, :product_variation_name
 		)
 	`
 	_, err := r.db.NamedExecContext(ctx, query, item)
@@ -34,6 +37,30 @@ func (r *OrderItemRepository) CreateOrderItems(ctx context.Context, items []mode
 		}
 	}
 	return nil
+}
+
+func (r *OrderItemRepository) GetOrderItemsByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) ([]models.OrderItem, error) {
+	if len(orderIDs) == 0 {
+		return []models.OrderItem{}, nil
+	}
+
+	query, args, err := sqlx.In(`SELECT * FROM order_items WHERE order_id IN (?)`, orderIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	query = r.db.Rebind(query)
+	var items []models.OrderItem
+	err = r.db.SelectContext(ctx, &items, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	if items == nil {
+		return []models.OrderItem{}, nil
+	}
+
+	return items, nil
 }
 
 func (r *OrderItemRepository) DeleteOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) error {

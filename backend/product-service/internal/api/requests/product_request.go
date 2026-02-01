@@ -30,7 +30,7 @@ type CreateProductRequest struct {
 	Slug            string                        `json:"slug" form:"slug"`
 	Description     *string                       `json:"description" form:"description"`
 	Price           float64                       `json:"price" form:"price"`
-	Weight          *int                          `json:"weight" form:"weight"`
+	Weight          *float64                      `json:"weight" form:"weight"`
 	ExternalID      string                        `json:"external_id" form:"external_id"`
 	Hidden          bool                          `json:"hidden" form:"hidden"`
 	Alcohol         bool                          `json:"alcohol" form:"alcohol"`
@@ -103,7 +103,7 @@ type UpdateProductRequest struct {
 	Slug        string    `json:"slug" form:"slug"`
 	Description *string   `json:"description" form:"description"`
 	Price       float64   `json:"price" form:"price"`
-	Weight      *int      `json:"weight" form:"weight"`
+	Weight      *float64  `json:"weight" form:"weight"`
 	ExternalID  string    `json:"external_id" form:"external_id"`
 	Hidden      bool      `json:"hidden" form:"hidden"`
 	Alcohol     bool      `json:"alcohol" form:"alcohol"`

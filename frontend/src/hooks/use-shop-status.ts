@@ -36,7 +36,7 @@ export interface ShopStatus {
 }
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000";
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export function useShopStatus() {
     const { getSetting, loading: settingsLoading } = useSettings();

@@ -14,7 +14,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY scripts /app/scripts
-COPY migrations /app/migrations
+COPY web-service/migrations /app/web-service/migrations
 
 # Make script executable
 RUN chmod +x /app/scripts/db-entrypoint.sh

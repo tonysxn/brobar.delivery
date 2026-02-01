@@ -7,12 +7,17 @@ import (
 	"html"
 	"math"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/tonysanin/brobar/order-service/internal/clients"
 	"github.com/tonysanin/brobar/order-service/internal/models"
 	"github.com/tonysanin/brobar/order-service/internal/repositories"
+	"github.com/tonysanin/brobar/pkg/clients/payment"
+	"github.com/tonysanin/brobar/pkg/helpers"
+	"github.com/tonysanin/brobar/pkg/monobank"
 	"github.com/tonysanin/brobar/pkg/rabbitmq"
 )
 
@@ -20,6 +25,7 @@ type OrderService struct {
 	repository          *repositories.OrderRepository
 	orderItemRepository *repositories.OrderItemRepository
 	productClient       *clients.ProductClient
+	paymentClient       *payment.Client
 	validationService   *ValidationService
 	producer            *rabbitmq.Producer
 }
@@ -28,6 +34,7 @@ func NewOrderService(
 	repository *repositories.OrderRepository,
 	orderItemRepository *repositories.OrderItemRepository,
 	productClient *clients.ProductClient,
+	paymentClient *payment.Client,
 	validationService *ValidationService,
 	producer *rabbitmq.Producer,
 ) *OrderService {
@@ -35,6 +42,7 @@ func NewOrderService(
 		repository:          repository,
 		orderItemRepository: orderItemRepository,
 		productClient:       productClient,
+		paymentClient:       paymentClient,
 		validationService:   validationService,
 		producer:            producer,
 	}
@@ -185,7 +193,27 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 		Items:             items,
 	}
 
-	// 7. Save to database
+	// 7. Payment Initialization
+	if input.PaymentMethod == "bank" || input.PaymentMethod == "online" {
+		params := payment.InitPaymentInput{
+			Amount:      int(serverTotal * 100),
+			OrderID:     order.ID.String(),
+			RedirectURL: fmt.Sprintf("https://%s/order/success", helpers.GetEnv("NGINX_DOMAIN", "brobar.com.ua")),
+			WebhookURL:  helpers.GetEnv("PAYMENT_WEBHOOK_URL", "https://api.brobar.delivery/payment-service/webhooks/monobank"),
+			Basket:      s.getBasketOrders(order),
+		}
+
+		output, err := s.paymentClient.InitPayment(params)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init payment: %w", err)
+		}
+
+		invoiceID := output.InvoiceID
+		order.InvoiceID = &invoiceID
+		order.PaymentURL = output.PaymentURL
+	}
+
+	// 8. Save to database
 	for i := range order.Items {
 		order.Items[i].OrderID = order.ID
 	}
@@ -198,98 +226,8 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 		return nil, err
 	}
 
-	// 8. Send notification (async)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Recovered in notification sender:", r)
-			}
-		}()
-
-		var itemsList string
-		for _, item := range order.Items {
-			// Escape item name for HTML
-			itemsList += fmt.Sprintf("- %s x%d (%.0f ₴)\n", html.EscapeString(item.Name), item.Quantity, item.TotalPrice)
-		}
-
-		// Format address block (for copying) and escape it
-		addressBlock := html.EscapeString(order.Address)
-		if order.Entrance != "" {
-			addressBlock += fmt.Sprintf(", п. %s", html.EscapeString(order.Entrance))
-		}
-
-		addInfo := fmt.Sprintf("Під'їзд/код: %s", html.EscapeString(order.Entrance))
-
-		deliveryMethod := "Доставка"
-		if order.DeliveryTypeID == "pickup" {
-			deliveryMethod = "Самовивіз"
-			addressBlock = "Самовивіз"
-			addInfo = "Самовивіз"
-		} else if order.Zone != nil {
-			deliveryMethod += fmt.Sprintf(" (%s)", html.EscapeString(*order.Zone))
-		}
-
-		deliveryPriceDisplay := fmt.Sprintf("%.0f ₴", order.DeliveryCost)
-
-		// Map link (ensure URL encoded)
-		queryAddr := order.Address
-		if order.Coords != "" {
-			queryAddr = order.Coords
-		}
-		mapLink := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(queryAddr))
-
-		msgText := fmt.Sprintf(
-			"<a href=\"https://brobar.com.ua/admin/orders/%s\">Нове замовлення #%s</a>\n\n"+
-				"👤 %s\n"+
-				"📞 %s\n\n"+
-				"<code>%s</code>\n"+
-				"<code>%s</code>\n\n"+
-				"🕐 На коли: %s\n"+
-				"🍴 Кількість приборів: %d\n\n"+
-				"💸 Загальна сума: %.0f ₴\n"+
-				"🚚 %s: %s\n\n"+
-				"Чек:\n"+
-				"%s"+
-				"💳 Оплата: <b>%s</b>",
-			order.ID, order.ID.String()[:8],
-			html.EscapeString(order.Name),
-			html.EscapeString(order.Phone),
-			addressBlock, // already escaped above
-			addInfo,      // already escaped above
-			order.Time.Format("15:04 02.01.2006"),
-			order.Cutlery,
-			order.TotalPrice,
-			deliveryMethod, deliveryPriceDisplay,
-			itemsList,
-			html.EscapeString(order.PaymentMethod),
-		)
-
-		if order.Wishes != "" {
-			msgText += fmt.Sprintf("\n\n💬 <b>Wishes:</b> %s", html.EscapeString(order.Wishes))
-		}
-
-		// Construct Inline Keyboard safely
-		keyboard := map[string]interface{}{
-			"inline_keyboard": [][]map[string]string{
-				{
-					{"text": "📍 Карта", "url": mapLink},
-				},
-			},
-		}
-
-		keyboardBytes, _ := json.Marshal(keyboard)
-
-		payload := map[string]interface{}{
-			"text":         msgText,
-			"reply_markup": string(keyboardBytes),
-			"phone":        order.Phone,
-			"address":      order.Address,
-			"map_link":     mapLink,
-		}
-
-		jsonBody, _ := json.Marshal(payload)
-		_ = s.producer.SendMessage(rabbitmq.QueueTelegram, string(jsonBody))
-	}()
+	// 9. Send notification
+	go s.sendOrderNotification(order)
 
 	return order, nil
 }
@@ -346,12 +284,86 @@ func (s *OrderService) GetOrderById(ctx context.Context, id uuid.UUID) (*models.
 	return s.repository.GetOrderById(ctx, id)
 }
 
-func (s *OrderService) GetAllOrders(ctx context.Context) ([]models.Order, error) {
-	return s.repository.GetAllOrders(ctx)
+func (s *OrderService) GetAllOrders(ctx context.Context) ([]*models.Order, error) {
+	rawOrders, err := s.repository.GetAllOrders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	orders := make([]*models.Order, len(rawOrders))
+	for i := range rawOrders {
+		orders[i] = &rawOrders[i]
+	}
+
+	if len(orders) == 0 {
+		return orders, nil
+	}
+
+	orderIDs := make([]uuid.UUID, len(orders))
+	for i, order := range orders {
+		orderIDs[i] = order.ID
+	}
+
+	items, err := s.orderItemRepository.GetOrderItemsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch order items: %w", err)
+	}
+
+	itemsByOrderID := make(map[uuid.UUID][]models.OrderItem)
+	for _, item := range items {
+		itemsByOrderID[item.OrderID] = append(itemsByOrderID[item.OrderID], item)
+	}
+
+	for i := range orders {
+		if itms, ok := itemsByOrderID[orders[i].ID]; ok {
+			orders[i].Items = itms
+		} else {
+			orders[i].Items = []models.OrderItem{}
+		}
+	}
+
+	return orders, nil
 }
 
-func (s *OrderService) GetOrdersWithPagination(ctx context.Context, limit, offset int, orderBy, orderDir string) ([]models.Order, int, error) {
-	return s.repository.GetOrdersWithPagination(ctx, limit, offset, orderBy, orderDir)
+func (s *OrderService) GetOrdersWithPagination(ctx context.Context, limit, offset int, orderBy, orderDir string) ([]*models.Order, int, error) {
+	rawOrders, totalCount, err := s.repository.GetOrdersWithPagination(ctx, limit, offset, orderBy, orderDir)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orders := make([]*models.Order, len(rawOrders))
+	for i := range rawOrders {
+		orders[i] = &rawOrders[i]
+	}
+
+	if len(orders) == 0 {
+		return orders, totalCount, nil
+	}
+
+	orderIDs := make([]uuid.UUID, len(orders))
+	for i, order := range orders {
+		orderIDs[i] = order.ID
+	}
+
+	items, err := s.orderItemRepository.GetOrderItemsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch order items: %w", err)
+	}
+
+	itemsByOrderID := make(map[uuid.UUID][]models.OrderItem)
+	for _, item := range items {
+		itemsByOrderID[item.OrderID] = append(itemsByOrderID[item.OrderID], item)
+	}
+
+	for i := range orders {
+		if itms, ok := itemsByOrderID[orders[i].ID]; ok {
+			orders[i].Items = itms
+		} else {
+			orders[i].Items = []models.OrderItem{}
+		}
+	}
+
+	return orders, totalCount, nil
 }
 
 func (s *OrderService) UpdateOrder(ctx context.Context, order *models.Order) error {
@@ -396,4 +408,198 @@ func (s *OrderService) UpdateOrder(ctx context.Context, order *models.Order) err
 
 func (s *OrderService) DeleteOrder(ctx context.Context, id uuid.UUID) error {
 	return s.repository.DeleteOrder(ctx, id)
+}
+
+func (s *OrderService) getBasketOrders(order *models.Order) []monobank.BasketOrder {
+	var basket []monobank.BasketOrder
+
+	for _, item := range order.Items {
+		basket = append(basket, monobank.BasketOrder{
+			Name: item.Name,
+			Qty:  item.Quantity,
+			Sum:  int(item.Price * 100), // coins
+			Icon: "",                    // Add icon if available
+			Code: item.ExternalProductID,
+		})
+	}
+
+	if order.DeliveryDoor {
+		basket = append(basket, monobank.BasketOrder{
+			Name: "ДОСТАВКА ДО ДВЕРЕЙ",
+			Qty:  1,
+			Sum:  4500, // 45 * 100
+		})
+	}
+
+	if order.DeliveryCost > 0 {
+		basket = append(basket, monobank.BasketOrder{
+			Name: fmt.Sprintf("Доставка %.0f", order.DeliveryCost),
+			Qty:  1,
+			Sum:  int(order.DeliveryCost * 100),
+		})
+	}
+
+	return basket
+}
+
+func (s *OrderService) sendOrderNotification(order *models.Order) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in notification sender:", r)
+		}
+	}()
+
+	var itemsList string
+	for _, item := range order.Items {
+		// Escape item name for HTML
+		itemsList += fmt.Sprintf("- %s x%d (%.0f ₴)\n", html.EscapeString(item.Name), item.Quantity, item.TotalPrice)
+	}
+
+	addressBlock := html.EscapeString(order.Address)
+	addInfo := ""
+
+	deliveryMethod := "Доставка"
+	if order.DeliveryTypeID == "pickup" {
+		deliveryMethod = "Самовивіз"
+		addressBlock = "Самовивіз"
+	} else {
+		if order.Zone != nil {
+			deliveryMethod += fmt.Sprintf(" %s", html.EscapeString(*order.Zone))
+		}
+		if order.Entrance != "" {
+			addInfo = fmt.Sprintf("Під'їзд/код: %s", html.EscapeString(order.Entrance))
+		}
+		if order.DeliveryDoor {
+			deliveryMethod += " + доставка до дверей"
+		}
+	}
+
+	deliveryPriceDisplay := fmt.Sprintf("%.0f ₴", order.DeliveryCost)
+
+	// Map link (ensure URL encoded)
+	queryAddr := order.Address
+	if order.Coords != "" {
+		queryAddr = order.Coords
+	}
+	mapLink := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(queryAddr))
+
+	paymentStatus := order.PaymentMethod
+	if order.InvoiceID != nil && order.StatusID == models.StatusPaid {
+		paymentStatus += " (ОПЛАЧЕНО)"
+	}
+
+	msgText := fmt.Sprintf(
+		"<a href=\"https://brobar.com.ua/admin/orders/%s\">Нове замовлення #%s</a>\n\n"+
+			"👤 %s\n"+
+			"📞 %s\n\n"+
+			"%s\n",
+		order.ID, strings.ToUpper(order.ID.String()[:8]),
+		html.EscapeString(order.Name),
+		html.EscapeString(order.Phone),
+		addressBlock,
+	)
+
+	if addInfo != "" {
+		msgText += fmt.Sprintf("%s\n", addInfo)
+	}
+
+	msgText += fmt.Sprintf(
+		"\n🕐 На коли: %s\n"+
+			"🍴 Кількість приборів: %d\n\n"+
+			"💸 Загальна сума: %.0f ₴\n"+
+			"🚚 %s: %s\n\n"+
+			"Чек:\n"+
+			"%s"+
+			"💳 Оплата: <b>%s</b>",
+		order.Time.Format("15:04 02.01.2006"),
+		order.Cutlery,
+		order.TotalPrice,
+		deliveryMethod, deliveryPriceDisplay,
+		itemsList,
+		html.EscapeString(paymentStatus),
+	)
+
+	if order.Wishes != "" {
+		msgText += fmt.Sprintf("\n\n💬 <b>Wishes:</b> %s", html.EscapeString(order.Wishes))
+	}
+
+	// Construct Inline Keyboard safely
+	keyboard := map[string]interface{}{
+		"inline_keyboard": [][]map[string]string{
+			{
+				{"text": "📍 Карта", "url": mapLink},
+			},
+		},
+	}
+
+	keyboardBytes, _ := json.Marshal(keyboard)
+
+	chatIDStr := helpers.GetEnv("TELEGRAM_CHAT_ID", "0")
+	chatID, _ := strconv.ParseInt(chatIDStr, 10, 64)
+
+	payload := map[string]interface{}{
+		"chat_id":      chatID,
+		"text":         msgText,
+		"reply_markup": string(keyboardBytes),
+		"phone":        order.Phone,
+		"address":      order.Address,
+		"map_link":     mapLink,
+	}
+
+	jsonBody, _ := json.Marshal(payload)
+	_ = s.producer.SendMessage(rabbitmq.QueueTelegram, string(jsonBody))
+}
+
+func (s *OrderService) sendPaymentNotification(order *models.Order, invoiceID string) {
+	msgText := fmt.Sprintf(
+		"💸 Замовлення #%s сплачено\nIдентифікатор платежу: %s",
+		strings.ToUpper(order.ID.String()[:8]),
+		invoiceID,
+	)
+
+	chatIDStr := helpers.GetEnv("TELEGRAM_CHAT_ID", "0")
+	chatID, _ := strconv.ParseInt(chatIDStr, 10, 64)
+
+	payload := map[string]interface{}{
+		"chat_id": chatID,
+		"text":    msgText,
+	}
+
+	jsonBody, _ := json.Marshal(payload)
+	_ = s.producer.SendMessage(rabbitmq.QueueTelegram, string(jsonBody))
+}
+
+type PaymentSuccessEvent struct {
+	InvoiceID string `json:"invoice_id"`
+	Amount    int    `json:"amount"`
+	Status    string `json:"status"`
+}
+
+func (s *OrderService) ProcessPaymentSuccess(event PaymentSuccessEvent) error {
+	ctx := context.Background()
+
+	// 1. Find order
+	order, err := s.repository.GetOrderByInvoiceID(ctx, event.InvoiceID)
+	if err != nil {
+		return fmt.Errorf("failed to find order by invoice id %s: %w", event.InvoiceID, err)
+	}
+
+	// 2. Check status
+	if order.StatusID == models.StatusPaid {
+		// Already paid
+		return nil
+	}
+
+	// 3. Update status
+	order.StatusID = models.StatusPaid
+	// We might store 'payed' bool logic here if strictly following PHP but StatusPaid is better
+
+	if err := s.repository.UpdateOrder(ctx, order); err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
+
+	// 4. Send notification
+	go s.sendPaymentNotification(order, event.InvoiceID)
+
+	return nil
 }

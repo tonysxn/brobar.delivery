@@ -11,7 +11,7 @@ type Product struct {
 	Slug            string                  `json:"slug" db:"slug" validate:"required,min=2,max=255"`
 	Description     *string                 `json:"description" db:"description"`
 	Price           float64                 `json:"price" db:"price" validate:"required,min=0"`
-	Weight          *int                    `json:"weight" db:"weight" validate:"omitempty,min=0"`
+	Weight          *float64                `json:"weight" db:"weight" validate:"omitempty,min=0"`
 	CategoryID      uuid.UUID               `json:"category_id" db:"category_id" validate:"required"`
 	Sort            int                     `json:"sort" db:"sort" validate:"min=0"`
 	Hidden          bool                    `json:"hidden" db:"hidden"`

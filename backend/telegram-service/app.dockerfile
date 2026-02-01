@@ -1,9 +1,7 @@
 FROM golang:1.24-alpine AS build
 
-# Add Alpine Edge testing for TDLib
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk update && \
-    apk --no-cache add gcc g++ make git tdlib-dev
+RUN apk update && \
+    apk --no-cache add gcc g++ make git
 
 WORKDIR /app
 
@@ -15,15 +13,14 @@ RUN go mod download
 COPY . .
 
 # Build the telegram-service binary
-RUN CGO_ENABLED=1 GOOS=linux go build -ldflags='-w -s' -o /app/bin/telegram-service ./telegram-service/cmd/telegram/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -s' -o /app/bin/telegram-service ./telegram-service/cmd/telegram/main.go
 
 # ... build stage remains same ...
 
 FROM alpine:3.20
 
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk update && \
-    apk add --no-cache curl tdlib gcompat
+RUN apk update && \
+    apk add --no-cache curl ca-certificates
 
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

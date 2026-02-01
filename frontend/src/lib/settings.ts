@@ -4,7 +4,7 @@ export interface Setting {
     value: string;
 }
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000";
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export async function getSettings(): Promise<Setting[]> {
     try {

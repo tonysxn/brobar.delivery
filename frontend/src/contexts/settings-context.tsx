@@ -16,7 +16,7 @@ interface SettingsContextValue {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8000";
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
     const [settings, setSettings] = useState<Setting[]>([]);

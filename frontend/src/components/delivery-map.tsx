@@ -29,8 +29,6 @@ export interface DeliveryZone {
     name: string;
 }
 
-
-
 export interface SearchResult {
     zone?: DeliveryZone;
     distance?: number;
@@ -248,45 +246,6 @@ export default function DeliveryMap({ onLocationSelect, cartTotal, children }: D
                     placeholder="Введіть адресу (наприклад: вул. Григорія Сковороди 64)"
                     className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-white placeholder:text-gray-500"
                 />
-                <style jsx global>{`
-                    .pac-container {
-                        background-color: #1a1a1a;
-                        width: 100% !important; /* Force width */
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-radius: 0.75rem;
-                        font-family: inherit;
-                        margin-top: 0.5rem;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    }
-                    .pac-item {
-                        border-top: 1px solid rgba(255, 255, 255, 0.05);
-                        padding: 10px 16px;
-                        color: #9ca3af;
-                        cursor: pointer;
-                        font-size: 0.875rem;
-                        line-height: 1.25rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                    }
-                    .pac-item:hover {
-                        background-color: rgba(255, 255, 255, 0.05);
-                    }
-                    .pac-item-query {
-                        color: #ffffff;
-                    }
-                    .pac-icon {
-                        display: none;
-                    }
-                    .pac-matched {
-                        font-weight: 700;
-                    }
-                    .pac-container::after {
-                        display: none !important;
-                        background-image: none !important;
-                        height: 0 !important;
-                    }
-                `}</style>
             </div>
 
             {searchResult && (

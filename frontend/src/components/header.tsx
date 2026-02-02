@@ -6,14 +6,12 @@ import Link from "next/link";
 import Image from "next/image";
 import Logo from "@/resources/images/logo.webp";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
 import { useCart } from "@/contexts/cart-context";
 import CartDrawer from "@/components/cart-drawer";
 
 export default function Header() {
     const pathname = usePathname();
-    // const isMobile = useIsMobile(); // Removed unused hook to prevent re-renders
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
     const { cartTotal, setIsCartOpen } = useCart();

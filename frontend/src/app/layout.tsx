@@ -24,7 +24,7 @@ export default function RootLayout({
     const defaultScheme = "dark";
 
     return (
-        <html lang="en" className={defaultScheme} style={{ colorScheme: "dark" }}>
+        <html lang="uk" className={defaultScheme} style={{ colorScheme: "dark" }}>
             <head>
                 <link
                     rel="preload"
@@ -54,8 +54,8 @@ export default function RootLayout({
                         <Preloader />
                         <ThemeProvider
                             attribute="class"
-                            defaultTheme="system"
-                            enableSystem
+                            defaultTheme="dark"
+                            forcedTheme="dark"
                             disableTransitionOnChange
                         >
                             <CartProvider>

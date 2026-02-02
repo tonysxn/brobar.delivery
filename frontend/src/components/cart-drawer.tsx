@@ -7,13 +7,7 @@ import { X, ShoppingBag, Trash2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
-
-const FILE_URL = process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:3001";
-
-function getImageUrl(imagePath: string) {
-    if (!imagePath) return "https://placehold.co/80x80?text=No+Image";
-    return `${FILE_URL}/${imagePath}`;
-}
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 
 export default function CartDrawer() {
     const { cart, isCartOpen, setIsCartOpen, removeFromCart, cartTotal, cartItemCount, updateQuantity } = useCart();
@@ -100,8 +94,8 @@ export default function CartDrawer() {
 
                                     {/* Product Image */}
                                     <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0">
-                                        <img
-                                            src={getImageUrl(item.product.image)}
+                                        <ImageWithFallback
+                                            src={item.product.image}
                                             alt={item.product.name}
                                             className="w-full h-full object-cover"
                                         />

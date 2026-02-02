@@ -89,7 +89,7 @@ body {
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--yellow);
+  --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -139,12 +139,12 @@ body {
   --yellow: #ffb400;
   --background: #1d1d1d;
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
+  --card: #1d1d1d;
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
+  --popover: #1d1d1d;
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: #1d1d1dc;
+  --primary: #ffb400;
+  --primary-foreground: #1d1d1d;
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
@@ -175,45 +175,42 @@ body {
 }
 
 .cart-button {
-  color: #1d1d1d;
+  color: var(--background);
   font-size: 1rem;
   font-weight: 400;
 }
 
 .background-brand {
-  background-color: #ffb400;
+  background-color: var(--primary);
 }
 
 .text-dark {
-  color: #1d1d1d;
+  color: var(--background);
 }
 
 .background-dark {
-  background: #1d1d1d;
+  background: var(--background);
 }
 
 .banner-text-lg {
-  background-color: #1d1d1d;
+  background-color: var(--background);
   padding: 0 10px;
   font-size: 72px;
   line-height: 1.25;
-  /* 72 * 1.25 = 90px */
 }
 
 .banner-text-md {
-  background-color: #1d1d1d;
+  background-color: var(--background);
   padding: 0 10px;
   font-size: 32px;
   line-height: 1.25;
-  /* 32 * 1.25 = 40px */
 }
 
 .banner-text-sm {
-  background-color: #1d1d1d;
+  background-color: var(--background);
   padding: 0 10px;
   font-size: 20px;
   line-height: 1.3;
-  /* 20 * 1.25 = 25px */
 }
 
 
@@ -336,4 +333,52 @@ gmp-place-autocomplete {
   /* IE and Edge */
   scrollbar-width: none;
   /* Firefox */
+}
+
+/* Google Maps Autocomplete Styles */
+.pac-container {
+  background-color: #1a1a1a;
+  width: 100% !important;
+  /* Force width */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  font-family: inherit;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 10000 !important;
+  /* Ensure it's above everything */
+}
+
+.pac-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 16px;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pac-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.pac-item-query {
+  color: #ffffff;
+}
+
+.pac-icon {
+  display: none;
+}
+
+.pac-matched {
+  font-weight: 700;
+}
+
+.pac-container::after {
+  display: none !important;
+  background-image: none !important;
+  height: 0 !important;
 }

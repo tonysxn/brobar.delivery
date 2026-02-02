@@ -2,19 +2,14 @@
 
 import {
     Package,
-    ChevronDown,
-    ChevronUp,
     MapPin, Phone, Clock2,
     LucideIcon,
     Plus,
     Minus,
     X,
-    AlertCircle,
     icons
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import Preloader from "@/components/preloader";
-import { usePreloader } from "@/contexts/preloader-context";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -22,9 +17,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useCart, Product, Variation } from "@/contexts/cart-context";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Skeleton, MenuSkeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useShopStatus } from "@/hooks/use-shop-status";
 import { formatWorkingHours } from "@/lib/working-hours";
+import { ShopStatusAlert } from "@/components/shop-status-alert";
+import { ProductCard } from "@/components/menu/product-card";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 
 // Helper to convert icon name to PascalCase (e.g., "utensils" -> "Utensils", "concierge-bell" -> "ConciergeBell")
 const toPascalCase = (str: string): string => {
@@ -51,7 +49,6 @@ interface Category {
 }
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
-const FILE_URL = process.env.NEXT_PUBLIC_FILE_URL || "http://localhost:3001";
 
 export default function Menu() {
     const [expanded, setExpanded] = useState(false);
@@ -110,7 +107,14 @@ export default function Menu() {
             const nav = document.getElementById("categories-nav");
             if (nav) {
                 const rect = nav.getBoundingClientRect();
-                setIsSticky(rect.top <= 118);
+                // Disable sticky effect on desktop (lg breakpoint is 1024px)
+                if (window.innerWidth >= 1024) {
+                    setIsSticky(false);
+                    return;
+                }
+                // Check sticky threshold based on screen size (matching CSS top values)
+                const threshold = window.innerWidth >= 768 ? 106 : 128;
+                setIsSticky(rect.top <= threshold);
             }
         };
 
@@ -148,11 +152,6 @@ export default function Menu() {
 
     const getIcon = (iconName: string): LucideIcon => {
         return getIconByName(iconName);
-    };
-
-    const getImageUrl = (imagePath: string) => {
-        if (!imagePath) return "https://placehold.co/250x200?text=No+Image";
-        return `${FILE_URL}/${imagePath}`;
     };
 
     // Check if product has required variations
@@ -236,20 +235,8 @@ export default function Menu() {
         <div>
             <Header />
 
-            {/* Closed today warning */}
-            {(!deliveryOpen || !pickupOpen) && (
-                <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-4 py-3 flex items-center justify-center gap-2">
-                    <Clock2 className="w-5 h-5 text-yellow-500 shrink-0" />
-                    <span className="text-yellow-500 text-sm text-center">
-                        {!deliveryOpen && !pickupOpen
-                            ? "Сьогодні ми вже не працюємо. Ви можете замовити на завтра!"
-                            : !deliveryOpen
-                                ? "Доставка на сьогодні недоступна. Ви можете замовити самовивіз або на завтра."
-                                : "Самовивіз на сьогодні недоступний. Ви можете замовити доставку або на завтра."
-                        }
-                    </span>
-                </div>
-            )}
+            {/* Shop Status Alert */}
+            <ShopStatusAlert deliveryOpen={deliveryOpen} pickupOpen={pickupOpen} />
 
             <main className="container mx-auto px-4 pt-[25px] pb-[25px] flex flex-col lg:flex-row gap-4 lg:gap-4 xl:gap-10">
                 {/* Mobile Info Accordion */}
@@ -316,8 +303,10 @@ export default function Menu() {
                 <div className="contents lg:flex lg:flex-col gap-3 w-full lg:w-[230px] xl:w-[275px] lg:sticky lg:self-start lg:top-32 lg:z-20 pb-4 lg:pb-0 pt-2 lg:pt-0">
                     <nav
                         id="categories-nav"
-                        className={`sticky top-[118px] z-30 py-2 lg:py-0 lg:static lg:bg-transparent flex flex-row lg:flex-col overflow-x-auto no-scrollbar gap-4 lg:gap-0 transition-all duration-300 ${isSticky ? "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 px-4 shadow-sm" : "bg-transparent mx-0 px-0"
-                            }`}
+                        className={`sticky top-[128px] md:top-[106px] z-30 py-2 lg:py-0 lg:static lg:bg-transparent flex flex-row lg:flex-col overflow-x-auto no-scrollbar gap-4 lg:gap-0 transition-all duration-300 ${isSticky
+                            ? "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-[100vw] ml-[calc(50%-50vw)] px-4 shadow-sm"
+                            : "bg-transparent mx-0 px-0"
+                            } lg:w-full lg:ml-0 lg:px-0`}
                     >
                         {categories.map((category) => {
                             const Icon = getIcon(category.icon);
@@ -348,50 +337,13 @@ export default function Menu() {
                                 <div key={category.id} id={category.slug} className="scroll-mt-[182px] lg:scroll-mt-[130px] pt-6 first:pt-0">
                                     <h2 className="text-xl lg:text-2xl font-semibold mb-4">{category.name}</h2>
                                     <div className="">
-                                        {category.products?.map((product) => {
-                                            return (
-                                                <div
-                                                    key={product.id}
-                                                    className={`transition cursor-pointer my-5 border-b border-gray-400 border-dashed last:border-b-0`}
-                                                >
-                                                    <div className="flex flex-col sm:flex-row gap-4 lg:gap-8 xl:gap-8 pb-3">
-                                                        <div className="flex flex-col gap-1 lg:gap-2 flex-1 order-2 sm:order-1">
-                                                            <h3 className="text-lg font-medium">{product.name}</h3>
-                                                            <p className="color-price">{product.price} ₴</p>
-                                                            {product.description && (
-                                                                <p className="text-[13px] text-gray-300">
-                                                                    {product.description}
-                                                                </p>
-                                                            )}
-                                                            {product.weight && (
-                                                                <p className="text-[13px] text-gray-400">
-                                                                    <span className="font-semibold">Вага:</span> {product.weight >= 1000
-                                                                        ? `${(product.weight / 1000)} кг`
-                                                                        : `${product.weight} г`}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                        <div className="order-1 sm:order-2 self-center sm:self-start w-full sm:w-auto">
-                                                            <img
-                                                                className="w-full sm:w-[250px] lg:w-[200px] xl:w-[250px] aspect-video sm:aspect-[4/3] object-cover rounded"
-                                                                src={getImageUrl(product.image)}
-                                                                alt={product.name}
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Unified Add Button */}
-                                                    <div className="mb-3">
-                                                        <Button
-                                                            className="w-fit text-black cursor-pointer bg-primary hover:bg-primary/90"
-                                                            onClick={() => handleAddToCart(product)}
-                                                        >
-                                                            {hasVariations(product) ? "Обрати" : "До кошику"}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        {category.products?.map((product) => (
+                                            <ProductCard
+                                                key={product.id}
+                                                product={product}
+                                                onAdd={(p) => handleAddToCart(p)}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             ))}
@@ -474,8 +426,8 @@ export default function Menu() {
                             {/* Product info */}
                             <div className="flex items-start gap-4 mb-6">
                                 <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
-                                    <img
-                                        src={getImageUrl(selectedProduct.image)}
+                                    <ImageWithFallback
+                                        src={selectedProduct.image}
                                         alt={selectedProduct.name}
                                         className="w-full h-full object-cover"
                                     />

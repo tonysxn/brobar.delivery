@@ -1,5 +1,7 @@
 FROM golang:1.24-alpine
 
+ENV GOPROXY=https://proxy.golang.org,direct
+
 RUN apk --no-cache add git bash curl
 
 WORKDIR /app
@@ -11,4 +13,4 @@ RUN go mod download
 
 COPY . .
 
-CMD ["air", "-c", "file-service/.air.toml"]
+CMD ["sh", "./scripts/dev-air-runner.sh", "file-service", "cmd/file/main.go"]

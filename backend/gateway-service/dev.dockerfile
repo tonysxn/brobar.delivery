@@ -1,5 +1,7 @@
 FROM golang:1.24-alpine
 
+ENV GOPROXY=https://proxy.golang.org,direct
+
 RUN apk --no-cache add git bash curl
 
 WORKDIR /app
@@ -14,4 +16,4 @@ COPY . .
 RUN chmod +x /app/scripts/db-entrypoint.sh && \
     find /app -type f -name ".air.toml" -exec chmod +r {} +
 
-CMD ["air", "-c", "gateway-service/.air.toml"]
+CMD ["sh", "./scripts/dev-air-runner.sh", "gateway-service", "cmd/gateway/main.go"]

@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Roboto } from "next/font/google";
 import { CartProvider } from "@/contexts/cart-context";
 import { SettingsProvider } from "@/contexts/settings-context";
-
-const roboto = Roboto({
-    weight: "400",
-    subsets: ["latin", "cyrillic"],
-});
 
 export const metadata: Metadata = {
     title: "Brobar",
@@ -32,8 +26,29 @@ export default function RootLayout({
     return (
         <html lang="en" className={defaultScheme} style={{ colorScheme: "dark" }}>
             <head>
+                <link
+                    rel="preload"
+                    href="/fonts/roboto-400.woff2"
+                    as="font"
+                    type="font/woff2"
+                    crossOrigin="anonymous"
+                />
+                <link
+                    rel="preload"
+                    href="/fonts/roboto-500.woff2"
+                    as="font"
+                    type="font/woff2"
+                    crossOrigin="anonymous"
+                />
+                <link
+                    rel="preload"
+                    href="/fonts/roboto-700.woff2"
+                    as="font"
+                    type="font/woff2"
+                    crossOrigin="anonymous"
+                />
             </head>
-            <body className={roboto.className}>
+            <body>
                 <SettingsProvider>
                     <PreloaderProvider>
                         <Preloader />

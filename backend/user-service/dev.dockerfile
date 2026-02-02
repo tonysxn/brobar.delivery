@@ -1,6 +1,8 @@
 # Stage 1: build migrate binary and install dependencies + install air
 FROM golang:1.24-alpine AS build
 
+ENV GOPROXY=https://proxy.golang.org,direct
+
 RUN apk --no-cache add git bash curl postgresql-client
 
 WORKDIR /app
@@ -17,6 +19,8 @@ RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate
 # Stage 2: dev container
 FROM golang:1.24-alpine
 
+ENV GOPROXY=https://proxy.golang.org,direct
+
 RUN apk --no-cache add git bash curl postgresql-client
 
 WORKDIR /app
@@ -31,4 +35,4 @@ RUN chmod +x /app/scripts/db-entrypoint.sh && \
 ENV PATH="/usr/local/bin:${PATH}"
 
 ENTRYPOINT ["/app/scripts/db-entrypoint.sh"]
-CMD ["air", "-c", "user-service/.air.toml"]
+CMD ["sh", "./scripts/dev-air-runner.sh", "user-service", "cmd/user/main.go"]

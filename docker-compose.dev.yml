@@ -290,9 +290,9 @@ services:
     ports:
       - "3005:3000"
     environment:
-      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL}
-      NEXT_PUBLIC_FILE_URL: ${NEXT_PUBLIC_FILE_URL}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      NEXT_PUBLIC_GATEWAY_URL: https://${NGINX_DOMAIN}/api
+      NEXT_PUBLIC_FILE_URL: https://${NGINX_DOMAIN}/api/files
     networks:
       - brobar_net
     restart: unless-stopped
@@ -308,7 +308,7 @@ services:
     ports:
       - "4000:3000"
     environment:
-      NEXT_PUBLIC_GATEWAY_URL: ${NEXT_PUBLIC_GATEWAY_URL}
+      NEXT_PUBLIC_GATEWAY_URL: https://${NGINX_ADMIN_DOMAIN}/api
     networks:
       - brobar_net
     restart: unless-stopped

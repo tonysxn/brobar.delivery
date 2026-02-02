@@ -1,4 +1,5 @@
 FROM golang:1.24-alpine
+ENV GOPROXY=https://proxy.golang.org,direct
 
 RUN apk --no-cache add git bash curl postgresql-client
 
@@ -20,4 +21,4 @@ COPY web-service/migrations /app/web-service/migrations
 RUN chmod +x /app/scripts/db-entrypoint.sh
 
 ENTRYPOINT ["/app/scripts/db-entrypoint.sh"]
-CMD ["air", "-c", "web-service/.air.toml"]
+CMD ["sh", "./scripts/dev-air-runner.sh", "web-service", "cmd/web/main.go"]

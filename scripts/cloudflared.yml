@@ -1,9 +1,9 @@
-tunnel: 5cf7266c-daf2-47a1-a6ac-91abecd85c26
-credentials-file: /Users/tonysanin/.cloudflared/5cf7266c-daf2-47a1-a6ac-91abecd85c26.json
+tunnel: 4837d56d-9607-4ef8-ad99-56c7ec21c1a8
+
 
 ingress:
   - hostname: dev.brobar.delivery
-    service: http://localhost:80
+    service: http://10.255.255.254:80
   - hostname: admin.brobar.delivery
-    service: http://localhost:80
+    service: http://10.255.255.254:80
   - service: http_status:404

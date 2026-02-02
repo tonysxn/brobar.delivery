@@ -1,5 +1,7 @@
 FROM golang:1.24-alpine
 
+ENV GOPROXY=https://proxy.golang.org,direct
+
 RUN apk update && \
     apk --no-cache add git bash curl
 
@@ -17,4 +19,4 @@ COPY . .
 RUN chmod +x /app/scripts/db-entrypoint.sh && \
     find /app -type f -name ".air.toml" -exec chmod +r {} +
 
-CMD ["air", "-c", "telegram-service/.air.toml"]
+CMD ["sh", "./scripts/dev-air-runner.sh", "telegram-service", "cmd/telegram/main.go"]

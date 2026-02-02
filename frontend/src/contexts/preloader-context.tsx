@@ -18,15 +18,21 @@ export function PreloaderProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const handleLoad = () => {
-            setIsLoading(false);
+            if (document.readyState === "complete") {
+                // Use RAF to sync with next paint
+                window.requestAnimationFrame(() => {
+                    setIsLoading(false);
+                });
+            } else {
+                window.addEventListener("load", () => {
+                    window.requestAnimationFrame(() => {
+                        setIsLoading(false);
+                    });
+                }, { once: true });
+            }
         };
 
-        if (document.readyState === "complete") {
-            handleLoad();
-        } else {
-            window.addEventListener("load", handleLoad);
-            return () => window.removeEventListener("load", handleLoad);
-        }
+        handleLoad();
     }, []);
 
     return (

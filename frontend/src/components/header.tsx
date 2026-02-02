@@ -13,12 +13,12 @@ import CartDrawer from "@/components/cart-drawer";
 
 export default function Header() {
     const pathname = usePathname();
-    const isMobile = useIsMobile();
+    // const isMobile = useIsMobile(); // Removed unused hook to prevent re-renders
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
     const { cartTotal, setIsCartOpen } = useCart();
 
-    const isMobileMenuPage = isMobile && pathname === "/menu";
+    const isMobileMenuPage = pathname === "/menu";
 
     const navigateTo = (path: string) => {
         setIsMenuOpen(false);
@@ -39,8 +39,9 @@ export default function Header() {
                             <Image
                                 src={Logo}
                                 alt="Logo"
-                                width={isMobile ? 50 : 60}
-                                className={`block h-auto ${isMobile ? "w-[50px]" : "w-[60px]"}`}
+                                width={60}
+                                height={60}
+                                className="block h-auto w-[60px]"
                                 priority
                             />
                             <div className="flex flex-col align-middle justify-center">
@@ -70,14 +71,14 @@ export default function Header() {
                         </Button>
 
                         {isMobileMenuPage && (
-                            <div onClick={() => setIsMenuOpen(true)} className="cursor-pointer">
+                            <div onClick={() => setIsMenuOpen(true)} className="cursor-pointer md:hidden">
                                 <Menu size={40} />
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className={`container mx-auto px-4 gap-5 ${isMobileMenuPage ? "hidden" : "flex"}`}>
+                <div className={`container mx-auto px-4 gap-5 ${isMobileMenuPage ? "hidden md:flex" : "flex"}`}>
                     <Link
                         href="/"
                         className={`${pathname === "/" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}

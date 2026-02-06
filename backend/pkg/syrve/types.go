@@ -93,7 +93,9 @@ type MenuItem struct {
 
 type MenuItemDTO struct {
 	ID   string `json:"id"`
+	Code string `json:"code"`
 	Name string `json:"name"`
+	Type string `json:"type"` // dish | good | modifier
 
 	Modifiers      []ModifierDTO      `json:"modifiers"`
 	GroupModifiers []ModifierGroupDTO `json:"groupModifiers"`
@@ -151,6 +153,8 @@ type ModifierDTO struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	DefaultAmount *int   `json:"defaultAmount,omitempty"`
+	MinAmount     int    `json:"minAmount"`
+	MaxAmount     int    `json:"maxAmount"`
 	Required      *bool  `json:"required,omitempty"`
 }
 
@@ -167,10 +171,6 @@ type ModifierGroup struct {
 	ChildModifiers                       []Modifier `json:"childModifiers"`
 }
 
-// -----------------------------
-// FULL STRUCTURES & DTOs
-// -----------------------------
-
 type MenuItemFull struct {
 	MenuItem
 }
@@ -185,6 +185,31 @@ type ModifierGroupDTO struct {
 	ID             string        `json:"id"`
 	Name           string        `json:"name"`
 	Required       *bool         `json:"required,omitempty"`
+	MinAmount      int           `json:"minAmount"`
+	MaxAmount      int           `json:"maxAmount"`
 	DefaultAmount  *int          `json:"defaultAmount,omitempty"`
 	ChildModifiers []ModifierDTO `json:"childModifiers"`
+}
+
+// -----------------------------
+// Organization Types
+// -----------------------------
+
+type OrganizationsRequest struct {
+	OrganizationIDs      []string `json:"organizationIds,omitempty"`
+	ReturnAdditionalInfo bool     `json:"returnAdditionalInfo,omitempty"`
+	IncludeDisabled      bool     `json:"includeDisabled,omitempty"`
+	ReturnExternalData   []string `json:"returnExternalData,omitempty"`
+}
+
+type Organization struct {
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	RMSVersion        *string `json:"rmsVersion,omitempty"`
+	Country           *string `json:"country,omitempty"`
+	RestaurantAddress *string `json:"restaurantAddress,omitempty"`
+}
+
+type OrganizationsResponse struct {
+	Organizations []Organization `json:"organizations"`
 }

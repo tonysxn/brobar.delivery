@@ -68,7 +68,7 @@ export default function Menu() {
     const [quantity, setQuantity] = useState(1);
 
     // Shop status
-    const { isOpen, message, workingHours, deliveryOpen, pickupOpen } = useShopStatus();
+    const { isOpen, isPaused, message, workingHours, deliveryOpen, pickupOpen } = useShopStatus();
     const deliveryHours = formatWorkingHours(workingHours, 'delivery');
     const pickupHours = formatWorkingHours(workingHours, 'pickup');
     const hoursAreSame = JSON.stringify(deliveryHours) === JSON.stringify(pickupHours);
@@ -139,16 +139,18 @@ export default function Menu() {
             setTempSelectedVariations(initialSelections);
             setVariationModalOpen(true);
         } else {
-            addToCart(product, {}, 1);
-            toast.success("Товар додано до кошика");
+            if (addToCart(product, {}, 1)) {
+                toast.success("Товар додано до кошика");
+            }
         }
     };
 
     const confirmVariationSelection = () => {
         if (selectedProduct) {
-            addToCart(selectedProduct, tempSelectedVariations, quantity);
-            setVariationModalOpen(false);
-            toast.success("Товар додано до кошика");
+            if (addToCart(selectedProduct, tempSelectedVariations, quantity)) {
+                setVariationModalOpen(false);
+                toast.success("Товар додано до кошика");
+            }
         }
     };
 
@@ -222,7 +224,7 @@ export default function Menu() {
             {/* Spacer to compensate for fixed nav taking up space */}
             <div className="lg:hidden h-[67px] w-full shrink-0" />
 
-            <ShopStatusAlert deliveryOpen={deliveryOpen} pickupOpen={pickupOpen} />
+            <ShopStatusAlert deliveryOpen={deliveryOpen} pickupOpen={pickupOpen} isPaused={isPaused} />
 
             <main className="container mx-auto px-4 pt-[25px] pb-[25px] flex flex-col lg:flex-row gap-4 lg:gap-4 xl:gap-10">
                 {/* MOBILE LAYOUT STRATEGY: 
@@ -459,8 +461,12 @@ export default function Menu() {
                                 </button>
                                 <span className="text-xl font-bold w-8 text-center">{quantity}</span>
                                 <button
-                                    onClick={() => setQuantity(quantity + 1)}
-                                    className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        if (selectedProduct.stock !== null && quantity >= selectedProduct.stock) return;
+                                        setQuantity(quantity + 1);
+                                    }}
+                                    className={`w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer ${selectedProduct.stock !== null && quantity >= selectedProduct.stock ? "opacity-50 cursor-not-allowed" : ""
+                                        }`}
                                 >
                                     <Plus className="w-4 h-4" />
                                 </button>

@@ -63,9 +63,17 @@ export function ProductCard({ product, onAdd, className }: ProductCardProps) {
                         e.stopPropagation(); // Prevent triggering parent clicks if any
                         onAdd(product);
                     }}
+                    disabled={product.sold || (product.stock !== null && product.stock <= 0)}
                 >
-                    {hasVariations ? "Обрати" : "До кошика"}
+                    {(product.sold || (product.stock !== null && product.stock <= 0))
+                        ? "Закінчився"
+                        : hasVariations ? "Обрати" : "До кошика"}
                 </Button>
+                {product.stock !== null && product.stock > 0 && (
+                    <span className="ml-3 text-sm text-yellow-500 font-medium">
+                        В наявності: {product.stock} шт
+                    </span>
+                )}
             </div>
         </div>
     );

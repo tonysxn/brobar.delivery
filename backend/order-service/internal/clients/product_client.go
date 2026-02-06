@@ -36,6 +36,7 @@ type Product struct {
 	Name       string    `json:"name"`
 	Price      float64   `json:"price"`
 	Weight     float64   `json:"weight"`
+	Stock      *float64  `json:"stock"`
 }
 
 // Variation response

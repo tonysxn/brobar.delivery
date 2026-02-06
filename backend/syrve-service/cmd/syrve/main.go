@@ -2,26 +2,40 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/tonysanin/brobar/pkg/helpers"
+	"github.com/tonysanin/brobar/pkg/rabbitmq"
+	"github.com/tonysanin/brobar/pkg/syrve"
 	"github.com/tonysanin/brobar/syrve-service/internal/api"
-	"github.com/tonysanin/brobar/syrve-service/internal/services/syrve"
+	"github.com/tonysanin/brobar/syrve-service/internal/config"
+	"github.com/tonysanin/brobar/syrve-service/internal/consumer"
 )
 
 func main() {
 	_ = godotenv.Load(".env")
 
-	apiLogin := helpers.GetEnv("SYRVE_TOKEN", "")
-	organizationID := helpers.GetEnv("SYRVE_ORGANIZATION", "")
-	port := helpers.GetEnv("SYRVE_PORT", "3011")
+	cfg := config.NewConfig()
 
-	client := syrve.NewClient(apiLogin, organizationID).WithTimeout(10)
+	client := syrve.NewClient(cfg.APILogin, cfg.OrganizationID).WithTimeout(10)
 
-	server := api.NewServer(client)
+	// Initialize Producer
+	producer := rabbitmq.NewProducer()
+	defer producer.Close()
 
-	log.Printf("Starting server on :%s", port)
-	if err := server.Listen(":" + port); err != nil {
+	server := api.NewServer(client, producer, cfg.OrderServiceURL)
+
+	// Start Consumer
+	rabbitMQURL := os.Getenv("RABBITMQ_URL")
+	if rabbitMQURL == "" {
+		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
+	}
+	
+	cons := consumer.NewConsumer(client, producer)
+	go cons.Start(rabbitMQURL)
+
+	log.Printf("Starting server on :%s", cfg.Port)
+	if err := server.Listen(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

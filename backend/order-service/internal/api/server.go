@@ -48,6 +48,7 @@ func (s *Server) SetupRoutes() {
 	orderGroup.Post("/", s.orderHandler.CreateOrder)
 	orderGroup.Put("/:id", s.orderHandler.UpdateOrder)
 	orderGroup.Delete("/:id", s.orderHandler.DeleteOrder)
+	orderGroup.Post("/:id/syrve-notified", s.orderHandler.MarkSyrveNotified)
 }
 
 func (s *Server) Listen(address string) error {

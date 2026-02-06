@@ -26,7 +26,7 @@ export function PaymentSection({ paymentMethod, setPaymentMethod, deliveryMethod
                         value="bank"
                         checked={paymentMethod === "bank"}
                         onChange={() => setPaymentMethod("bank")}
-                        className="w-5 h-5 accent-primary bg-transparent border-white/20"
+                        className="sr-only"
                     />
                     <CreditCard className={cn("w-6 h-6", paymentMethod === "bank" ? "text-primary" : "text-gray-400")} />
                     <span className={paymentMethod === "bank" ? "font-bold text-white" : "text-gray-300"}>

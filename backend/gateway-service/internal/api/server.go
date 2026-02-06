@@ -160,6 +160,10 @@ func (s *Server) SetupRoutes() {
 	telegramGroup := s.app.Group("webhooks/telegram")
 	telegramGroup.Post("/", s.ProxyToTelegramService)
 
+	// Syrve webhook
+	syrveWebhookGroup := s.app.Group("webhooks/syrve")
+	syrveWebhookGroup.Post("", s.ProxyToSyrveService)
+
 	// File
 	fileGroup := s.app.Group("/files")
 	fileGroup.Get("/:id", s.ProxyToFileService)

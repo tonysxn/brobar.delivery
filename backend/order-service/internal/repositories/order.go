@@ -110,6 +110,7 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, id uuid.UUID) (*mode
 			o.payment_method as "order.payment_method",
 			o.zone as "order.zone",
 			o.invoice_id as "order.invoice_id",
+			o.syrve_notified as "order.syrve_notified",
 
 			oi.id as "items.id",
 			oi.order_id as "items.order_id",
@@ -169,6 +170,7 @@ func (r *OrderRepository) GetOrderByInvoiceID(ctx context.Context, invoiceID str
 			o.payment_method as "order.payment_method",
 			o.zone as "order.zone",
 			o.invoice_id as "order.invoice_id",
+			o.syrve_notified as "order.syrve_notified",
 
 			oi.id as "items.id",
 			oi.order_id as "items.order_id",
@@ -273,8 +275,9 @@ func (r *OrderRepository) scanOrder(err error, rows *sqlx.Rows, ctx context.Cont
 			&deliveryDoorPrice,
 			&o.DeliveryTypeID,
 			&paymentMethod,
-			&zone,
+			&o.Zone,
 			&o.InvoiceID,
+			&o.SyrveNotified,
 
 			&oiID,
 			&oiOrderID,
@@ -406,12 +409,12 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) 
 			id, user_id, status_id, total_price, created_at, updated_at,
 			address, entrance, floor, flat, address_wishes, name, phone,
 			time, email, wishes, promo, coords, cutlery, delivery_cost,
-			delivery_door, delivery_door_price, delivery_type_id, payment_method, zone, invoice_id
+			delivery_door, delivery_door_price, delivery_type_id, payment_method, zone, invoice_id, syrve_notified
 		) VALUES (
 			:id, :user_id, :status_id, :total_price, :created_at, :updated_at,
 			:address, :entrance, :floor, :flat, :address_wishes, :name, :phone,
 			:time, :email, :wishes, :promo, :coords, :cutlery, :delivery_cost,
-			:delivery_door, :delivery_door_price, :delivery_type_id, :payment_method, :zone, :invoice_id
+			:delivery_door, :delivery_door_price, :delivery_type_id, :payment_method, :zone, :invoice_id, :syrve_notified
 		)
 	`
 
@@ -465,7 +468,8 @@ func (r *OrderRepository) UpdateOrder(ctx context.Context, order *models.Order) 
 			delivery_type_id = :delivery_type_id,
 			payment_method = :payment_method,
 			zone = :zone,
-			invoice_id = :invoice_id
+			invoice_id = :invoice_id,
+			syrve_notified = :syrve_notified
 		WHERE id = :id
 	`
 
@@ -524,4 +528,23 @@ func (r *OrderRepository) DeleteOrder(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *OrderRepository) SetSyrveNotified(ctx context.Context, id uuid.UUID) (bool, error) {
+	const query = `UPDATE orders SET syrve_notified = TRUE, updated_at = $1 WHERE id = $2 AND syrve_notified = FALSE`
+
+	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
+	defer cancel()
+
+	result, err := r.db.ExecContext(ctx, query, time.Now(), id)
+	if err != nil {
+		return false, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	return rowsAffected > 0, nil
 }

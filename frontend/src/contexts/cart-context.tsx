@@ -3,10 +3,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Product, Variation, VariationGroup } from "@/types/product";
 import { CartItem } from "@/types/cart";
+import { toast } from "sonner";
 
 interface CartContextType {
     cart: CartItem[];
-    addToCart: (product: Product, selectedVariations: Record<string, Variation>, quantity?: number) => void;
+    addToCart: (product: Product, selectedVariations: Record<string, Variation>, quantity?: number) => boolean;
     updateQuantity: (cartItemId: string, delta: number) => void;
     removeFromCart: (cartItemId: string) => void;
     clearCart: () => void;
@@ -68,11 +69,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
     }, [cart, isInitialized]);
 
-    const addToCart = (product: Product, selectedVariations: Record<string, Variation>, quantity: number = 1) => {
+    const addToCart = (product: Product, selectedVariations: Record<string, Variation>, quantity: number = 1): boolean => {
         const cartItemId = generateCartItemId(product.id, selectedVariations);
+        const existingItem = cart.find(item => item.id === cartItemId);
+        const currentQty = existingItem ? existingItem.quantity : 0;
+
+        if (product.stock !== null && (currentQty + quantity > product.stock)) {
+            toast.error(`Вибачте, доступно лише ${product.stock} шт`);
+            return false;
+        }
 
         setCart(prevCart => {
-            const existingItem = prevCart.find(item => item.id === cartItemId);
             if (existingItem) {
                 return prevCart.map(item =>
                     item.id === cartItemId
@@ -88,10 +95,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 }];
             }
         });
+        return true;
     };
 
     const updateQuantity = (cartItemId: string, delta: number) => {
         setCart(prevCart => {
+            const item = prevCart.find(i => i.id === cartItemId);
+            if (!item) return prevCart;
+
+            if (delta > 0 && item.product.stock !== null) {
+                if (item.quantity + delta > item.product.stock) {
+                    toast.error(`Вибачте, доступно лише ${item.product.stock} шт`);
+                    return prevCart;
+                }
+            }
+
             return prevCart
                 .map(item => {
                     if (item.id === cartItemId) {

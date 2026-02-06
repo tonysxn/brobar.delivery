@@ -6,11 +6,23 @@ import { cn } from "@/lib/utils";
 interface ShopStatusAlertProps {
     deliveryOpen: boolean;
     pickupOpen: boolean;
+    isPaused?: boolean;
     className?: string;
 }
 
-export function ShopStatusAlert({ deliveryOpen, pickupOpen, className }: ShopStatusAlertProps) {
-    if (deliveryOpen && pickupOpen) return null;
+export function ShopStatusAlert({ deliveryOpen, pickupOpen, isPaused, className }: ShopStatusAlertProps) {
+    if (deliveryOpen && pickupOpen && !isPaused) return null;
+
+    let message = "";
+    if (isPaused) {
+        message = "Вибачте, ми тимчасово не приймаємо замовлення 😔";
+    } else if (!deliveryOpen && !pickupOpen) {
+        message = "Сьогодні ми вже не працюємо. Ви можете замовити на завтра!";
+    } else if (!deliveryOpen) {
+        message = "Доставка на сьогодні недоступна. Ви можете замовити самовивіз або на завтра.";
+    } else {
+        message = "Самовивіз на сьогодні недоступний. Ви можете замовити доставку або на завтра.";
+    }
 
     return (
         <div
@@ -21,11 +33,7 @@ export function ShopStatusAlert({ deliveryOpen, pickupOpen, className }: ShopSta
         >
             <Clock2 className="w-5 h-5 text-yellow-500 shrink-0" />
             <span className="text-yellow-500 text-sm text-center">
-                {!deliveryOpen && !pickupOpen
-                    ? "Сьогодні ми вже не працюємо. Ви можете замовити на завтра!"
-                    : !deliveryOpen
-                        ? "Доставка на сьогодні недоступна. Ви можете замовити самовивіз або на завтра."
-                        : "Самовивіз на сьогодні недоступний. Ви можете замовити доставку або на завтра."}
+                {message}
             </span>
         </div>
     );

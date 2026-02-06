@@ -8,25 +8,6 @@ import (
 	"net/http"
 )
 
-type OrganizationsRequest struct {
-	OrganizationIDs      []string `json:"organizationIds,omitempty"`
-	ReturnAdditionalInfo bool     `json:"returnAdditionalInfo,omitempty"`
-	IncludeDisabled      bool     `json:"includeDisabled,omitempty"`
-	ReturnExternalData   []string `json:"returnExternalData,omitempty"`
-}
-
-type Organization struct {
-	ID                string  `json:"id"`
-	Name              string  `json:"name"`
-	RMSVersion        *string `json:"rmsVersion,omitempty"`
-	Country           *string `json:"country,omitempty"`
-	RestaurantAddress *string `json:"restaurantAddress,omitempty"`
-}
-
-type OrganizationsResponse struct {
-	Organizations []Organization `json:"organizations"`
-}
-
 func (c *Client) GetOrganizations(ctx context.Context, authToken string, reqBody OrganizationsRequest) (*OrganizationsResponse, error) {
 	if authToken == "" {
 		return nil, errors.New("authorization token is required")

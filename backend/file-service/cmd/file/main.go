@@ -5,20 +5,20 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/tonysanin/brobar/file-service/internal/api"
+	"github.com/tonysanin/brobar/file-service/internal/config"
 	"github.com/tonysanin/brobar/file-service/internal/services"
-	"github.com/tonysanin/brobar/pkg/helpers"
 )
 
 func main() {
 	_ = godotenv.Load(".env")
 
-	port := helpers.GetEnv("SERVER_PORT", "3001")
+	cfg := config.NewConfig()
 
-	fileService := services.NewFileService("./uploads")
+	fileService := services.NewFileService(cfg.UploadDir)
 	server := api.NewServer(fileService)
 
-	log.Printf("Starting server on :%s", port)
-	if err := server.Listen(":" + port); err != nil {
+	log.Printf("Starting server on :%s", cfg.Port)
+	if err := server.Listen(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

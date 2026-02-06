@@ -7,26 +7,22 @@ import (
 	"github.com/tonysanin/brobar/pkg/response"
 )
 
-type TimeHandler struct{}
-
-func NewTimeHandler() *TimeHandler {
-	return &TimeHandler{}
+type TimeHandler struct {
+	location *time.Location
 }
 
-// Kiev timezone
-var kievLocation *time.Location
-
-func init() {
-	var err error
-	kievLocation, err = time.LoadLocation("Europe/Kiev")
+func NewTimeHandler(timezone string) *TimeHandler {
+	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		// Fallback to UTC+2 in winter, UTC+3 in summer (approximate)
-		kievLocation = time.FixedZone("EET", 2*60*60)
+		loc = time.FixedZone("EET", 2*60*60)
+	}
+	return &TimeHandler{
+		location: loc,
 	}
 }
 
 func (h *TimeHandler) GetServerTime(c fiber.Ctx) error {
-	now := time.Now().In(kievLocation)
+	now := time.Now().In(h.location)
 	return response.Success(c, fiber.Map{
 		"timestamp":  now.Unix(),
 		"datetime":   now.Format(time.RFC3339),

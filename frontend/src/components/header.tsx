@@ -65,7 +65,7 @@ export default function Header() {
                         <div className="flex-1 flex justify-center">
                         </div>
 
-                        <div className="flex-1 flex justify-end items-center space-x-6">
+                        <div className="flex-1 flex justify-end items-center">
                             <Button
                                 size="lg"
                                 className="cart-button hidden md:flex items-center cursor-pointer"
@@ -77,13 +77,13 @@ export default function Header() {
                                     Кошик - <span>{cartTotal}</span> ₴
                                 </div>
                             </Button>
-
-                            {isMobileMenuPage && (
-                                <div onClick={!isSpacer ? () => setIsMenuOpen(true) : undefined} className="cursor-pointer md:hidden">
-                                    <Menu size={40} />
-                                </div>
-                            )}
                         </div>
+
+                        {isMobileMenuPage && (
+                            <div onClick={!isSpacer ? () => setIsMenuOpen(true) : undefined} className="cursor-pointer md:hidden absolute right-4">
+                                <Menu size={40} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Исправленная навигация с подавлением ошибок гидратации */}

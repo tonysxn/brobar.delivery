@@ -28,6 +28,7 @@ type OrderService struct {
 	paymentClient       *payment.Client
 	validationService   *ValidationService
 	producer            *rabbitmq.Producer
+	location            *time.Location
 }
 
 func NewOrderService(
@@ -37,7 +38,13 @@ func NewOrderService(
 	paymentClient *payment.Client,
 	validationService *ValidationService,
 	producer *rabbitmq.Producer,
+	timezone string,
 ) *OrderService {
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		loc = time.FixedZone("EET", 2*60*60) // Fallback to Kyiv winter time
+	}
+
 	return &OrderService{
 		repository:          repository,
 		orderItemRepository: orderItemRepository,
@@ -45,6 +52,7 @@ func NewOrderService(
 		paymentClient:       paymentClient,
 		validationService:   validationService,
 		producer:            producer,
+		location:            loc,
 	}
 }
 
@@ -81,6 +89,13 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 		return nil, err
 	}
 
+	// 1.1 Validate Payment Method
+	normalizedPayment, err := s.validationService.ValidateAndNormalizePaymentMethod(input.PaymentMethod)
+	if err != nil {
+		return nil, err
+	}
+	input.PaymentMethod = normalizedPayment
+
 	// 2. Fetch products and build order items with actual prices
 	var items []models.OrderItem
 	var itemsTotal float64 = 0
@@ -89,6 +104,14 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 		product, err := s.productClient.GetProduct(itemInput.ProductID)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrProductNotFound, itemInput.ProductID.String())
+		}
+
+		// Validation: Check stock
+		// If stock is nil, it means unlimited
+		if product.Stock != nil {
+			if float64(itemInput.Quantity) > *product.Stock {
+				return nil, fmt.Errorf("товар %s закінчився (доступно: %.0f, бажано: %d)", product.Name, *product.Stock, itemInput.Quantity)
+			}
 		}
 
 		item := models.OrderItem{
@@ -148,7 +171,7 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 	}
 
 	// 4. Calculate server total
-	serverTotal := itemsTotal + deliveryCost
+	serverTotal := itemsTotal + deliveryCost + deliveryDoorPrice
 
 	// 4. Compare totals (allow small difference for rounding)
 	if math.Abs(serverTotal-input.ClientTotal) > 1.0 {
@@ -158,9 +181,9 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 	// 5. Parse time
 	var orderTime time.Time
 	if input.Time == "ASAP" {
-		orderTime = time.Now()
+		orderTime = time.Now().In(s.location)
 	} else {
-		parsed, err := time.Parse("2006-01-02 15:04", input.Time)
+		parsed, err := time.ParseInLocation("2006-01-02 15:04", input.Time, s.location)
 		if err != nil {
 			return nil, fmt.Errorf("невірний формат часу")
 		}
@@ -194,7 +217,8 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 	}
 
 	// 7. Payment Initialization
-	if input.PaymentMethod == "bank" || input.PaymentMethod == "online" {
+	// 7. Payment Initialization
+	if input.PaymentMethod == "online" {
 		params := payment.InitPaymentInput{
 			Amount:      int(serverTotal * 100),
 			OrderID:     order.ID.String(),
@@ -228,6 +252,13 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 
 	// 9. Send notification
 	go s.sendOrderNotification(order)
+
+	// 10. Send to Syrve if payment doesn't require confirmation (cash/terminal only)
+	// 10. Send to Syrve if payment doesn't require confirmation (cash/terminal only)
+	if input.PaymentMethod == "cash" {
+		orderJSON, _ := json.Marshal(order)
+		_ = s.producer.SendMessage(rabbitmq.QueueSyrve, string(orderJSON))
+	}
 
 	return order, nil
 }
@@ -410,6 +441,10 @@ func (s *OrderService) DeleteOrder(ctx context.Context, id uuid.UUID) error {
 	return s.repository.DeleteOrder(ctx, id)
 }
 
+func (s *OrderService) SetSyrveNotified(ctx context.Context, id uuid.UUID) (bool, error) {
+	return s.repository.SetSyrveNotified(ctx, id)
+}
+
 func (s *OrderService) getBasketOrders(order *models.Order) []monobank.BasketOrder {
 	var basket []monobank.BasketOrder
 
@@ -427,7 +462,7 @@ func (s *OrderService) getBasketOrders(order *models.Order) []monobank.BasketOrd
 		basket = append(basket, monobank.BasketOrder{
 			Name: "ДОСТАВКА ДО ДВЕРЕЙ",
 			Qty:  1,
-			Sum:  4500, // 45 * 100
+			Sum:  int(order.DeliveryDoorPrice * 100),
 		})
 	}
 
@@ -475,6 +510,9 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 	}
 
 	deliveryPriceDisplay := fmt.Sprintf("%.0f ₴", order.DeliveryCost)
+	if order.DeliveryDoor {
+		deliveryPriceDisplay += fmt.Sprintf(" (+ %.0f ₴ до дверей)", order.DeliveryDoorPrice)
+	}
 
 	// Map link (ensure URL encoded)
 	queryAddr := order.Address
@@ -483,7 +521,15 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 	}
 	mapLink := fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%s", url.QueryEscape(queryAddr))
 
-	paymentStatus := order.PaymentMethod
+	paymentMethodDisplay := order.PaymentMethod
+	switch order.PaymentMethod {
+	case "online":
+		paymentMethodDisplay = "Оплата онлайн"
+	case "cash":
+		paymentMethodDisplay = "Готівкою/Терміналом"
+	}
+
+	paymentStatus := paymentMethodDisplay
 	if order.InvoiceID != nil && order.StatusID == models.StatusPaid {
 		paymentStatus += " (ОПЛАЧЕНО)"
 	}
@@ -511,7 +557,7 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 			"Чек:\n"+
 			"%s"+
 			"💳 Оплата: <b>%s</b>",
-		order.Time.Format("15:04 02.01.2006"),
+		order.Time.In(s.location).Format("15:04 02.01.2006"),
 		order.Cutlery,
 		order.TotalPrice,
 		deliveryMethod, deliveryPriceDisplay,
@@ -520,25 +566,29 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 	)
 
 	if order.Wishes != "" {
-		msgText += fmt.Sprintf("\n\n💬 <b>Wishes:</b> %s", html.EscapeString(order.Wishes))
+		msgText += fmt.Sprintf("\n\n💬 <b>Побажання:</b> %s", html.EscapeString(order.Wishes))
+	}
+
+	if order.Promo != "" {
+		msgText += fmt.Sprintf("\n\n🎟 <b>Промокод:</b> %s", html.EscapeString(order.Promo))
 	}
 
 	// Construct Inline Keyboard safely
-	// Construct Inline Keyboard safely
-	// We need to replicate SendProfile logic + add our button
-	// SendProfile adds: Map (if link), Phone Copy (if phone), Address Copy (if address)
+	// For pickup orders, only show phone button
+	// For delivery orders, show: Map, Phone, Address, and Taxi
 	
 	var buttons []interface{}
+	isPickup := order.DeliveryTypeID == "pickup"
 	
-	// 1. Map
-	if mapLink != "" {
+	// 1. Map (skip for pickup)
+	if !isPickup && mapLink != "" {
 		buttons = append(buttons, map[string]interface{}{
 			"text": "📍",
 			"url":  mapLink,
 		})
 	}
 	
-	// 2. Phone Copy
+	// 2. Phone Copy (always show)
 	if order.Phone != "" {
 		buttons = append(buttons, map[string]interface{}{
 			"text": "📞",
@@ -548,8 +598,8 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 		})
 	}
 	
-	// 3. Address Copy
-	if order.Address != "" {
+	// 3. Address Copy (skip for pickup)
+	if !isPickup && order.Address != "" {
 		buttons = append(buttons, map[string]interface{}{
 			"text": "🏠",
 			"copy_text": map[string]string{
@@ -558,19 +608,25 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 		})
 	}
 	
-	// 4. Taxi
-	taxiButton := []interface{}{
-		map[string]interface{}{
-			"text": "🚕 Викликати таксі",
-			"callback_data": fmt.Sprintf("call_taxi:%s", order.ID),
-		},
+	// Build keyboard rows
+	var keyboardRows []interface{}
+	if len(buttons) > 0 {
+		keyboardRows = append(keyboardRows, buttons)
+	}
+	
+	// 4. Taxi button (skip for pickup)
+	if !isPickup {
+		taxiButton := []interface{}{
+			map[string]interface{}{
+				"text": "🚕 Викликати таксі",
+				"callback_data": fmt.Sprintf("call_taxi:%s", order.ID),
+			},
+		}
+		keyboardRows = append(keyboardRows, taxiButton)
 	}
 
 	keyboard := map[string]interface{}{
-		"inline_keyboard": []interface{}{
-			buttons,    // Row 1: Map, Phone, Address
-			taxiButton, // Row 2: Taxi
-		},
+		"inline_keyboard": keyboardRows,
 	}
 
 	keyboardBytes, _ := json.Marshal(keyboard)
@@ -641,6 +697,10 @@ func (s *OrderService) ProcessPaymentSuccess(event PaymentSuccessEvent) error {
 
 	// 4. Send notification
 	go s.sendPaymentNotification(order, event.InvoiceID)
+
+	// 5. Send to Syrve
+	orderJSON, _ := json.Marshal(order)
+	_ = s.producer.SendMessage(rabbitmq.QueueSyrve, string(orderJSON))
 
 	return nil
 }

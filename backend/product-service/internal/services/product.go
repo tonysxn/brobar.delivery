@@ -199,3 +199,7 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id uuid.UUID) error 
 func (s *ProductService) GetProductsByCategory(ctx context.Context, id uuid.UUID) ([]models.Product, error) {
 	return s.repo.GetProductsByCategoryID(ctx, id)
 }
+
+func (s *ProductService) UpdateStock(ctx context.Context, externalID string, stock float64) error {
+	return s.repo.UpdateProductStock(ctx, externalID, &stock)
+}

@@ -1,12 +1,11 @@
 package app
 
 import (
-	"os"
-
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/tonysanin/brobar/payment-service/internal/config"
 	"github.com/tonysanin/brobar/payment-service/internal/handlers"
 	"github.com/tonysanin/brobar/payment-service/internal/provider"
 	"github.com/tonysanin/brobar/payment-service/internal/rabbitmq"
@@ -18,7 +17,7 @@ type Server struct {
 	app *fiber.App
 }
 
-func NewServer() *Server {
+func NewServer(cfg *config.Config) *Server {
 	s := &Server{
 		app: fiber.New(fiber.Config{
 			AppName: "Payment Service",
@@ -31,11 +30,7 @@ func NewServer() *Server {
 
 	// Initialize dependencies here
 	// 1. RabbitMQ Publisher
-	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		rabbitURL = "amqp://guest:guest@rabbitmq:5672/"
-	}
-	rabbitPublisher, err := rabbitmq.NewPublisher(rabbitURL)
+	rabbitPublisher, err := rabbitmq.NewPublisher(cfg.RabbitMQURL)
 	if err != nil {
 		// Log error but don't crash, maybe retry or fail depending on strictness
 		// For now simple log
@@ -43,8 +38,7 @@ func NewServer() *Server {
 	}
 
 	// 2. Monobank Client
-	monoToken := os.Getenv("MONOBANK_TOKEN")
-	monoClient := monobank.NewAcquiring(monoToken, os.Getenv("PUBLIC_DOMAIN"))
+	monoClient := monobank.NewAcquiring(cfg.MonobankToken, cfg.PublicDomain)
 
 	// 3. Payment Provider (Strategy)
 	// For now we only have Monobank, but interface allows more

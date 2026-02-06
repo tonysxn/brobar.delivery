@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN syrve_notified BOOLEAN DEFAULT FALSE;

@@ -235,3 +235,28 @@ func (r *ProductRepository) GetProductsByCategoryID(ctx context.Context, categor
 
 	return products, nil
 }
+
+func (r *ProductRepository) UpdateProductStock(ctx context.Context, externalID string, stock *float64) error {
+	const query = `UPDATE products SET stock = $1 WHERE external_id = $2`
+
+	ctx, cancel := context.WithTimeout(ctx, defaultQueryTimeout)
+	defer cancel()
+
+	result, err := r.db.ExecContext(ctx, query, stock, externalID)
+	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("database query timed out")
+		}
+		return fmt.Errorf("failed to update product stock: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return customerrors.ProductNotFound
+	}
+
+	return nil
+}

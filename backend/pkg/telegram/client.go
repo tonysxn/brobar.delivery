@@ -143,3 +143,22 @@ func (c *Client) DeleteMessage(chatID int64, messageID int) error {
 	}
 	return c.send("deleteMessage", payload)
 }
+
+type EditMessageTextRequest struct {
+	ChatID      int64       `json:"chat_id"`
+	MessageID   int         `json:"message_id"`
+	Text        string      `json:"text"`
+	ParseMode   string      `json:"parse_mode,omitempty"`
+	ReplyMarkup interface{} `json:"reply_markup,omitempty"`
+}
+
+func (c *Client) EditMessageText(chatID int64, messageID int, text string, replyMarkup interface{}) error {
+	req := EditMessageTextRequest{
+		ChatID:      chatID,
+		MessageID:   messageID,
+		Text:        text,
+		ParseMode:   "HTML",
+		ReplyMarkup: replyMarkup,
+	}
+	return c.send("editMessageText", req)
+}

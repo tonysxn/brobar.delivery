@@ -4,37 +4,32 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/joho/godotenv"
-	"github.com/tonysanin/brobar/pkg/helpers"
 	"github.com/tonysanin/brobar/pkg/response"
 	"github.com/tonysanin/brobar/pkg/rabbitmq"
 	"github.com/tonysanin/brobar/pkg/telegram"
 	"github.com/tonysanin/brobar/telegram-service/internal/bot"
+	"github.com/tonysanin/brobar/telegram-service/internal/config"
 	"github.com/tonysanin/brobar/telegram-service/internal/consumer"
 )
 
 func main() {
 	_ = godotenv.Load(".env")
 
-	rabbitURL := helpers.GetEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-	botToken := helpers.GetEnv("TELEGRAM_BOT_TOKEN", "")
+	cfg := config.NewConfig()
 
-	if rabbitURL == "" || botToken == "" {
+	if cfg.RabbitMQURL == "" || cfg.BotToken == "" {
 		log.Fatal("One or more required env variables are missing: RABBITMQ_URL, TELEGRAM_BOT_TOKEN")
 	}
 
 	// Initialize Telegram HTTP Client
-	tgClient := telegram.NewClient(botToken)
-
-	defaultChatIDStr := helpers.GetEnv("TELEGRAM_CHAT_ID", "0")
-	defaultChatID, _ := strconv.ParseInt(defaultChatIDStr, 10, 64)
+	tgClient := telegram.NewClient(cfg.BotToken)
 
 	// Initialize RabbitMQ Consumer
-	telegramConsumer, err := consumer.NewTelegramConsumer(rabbitURL, tgClient, defaultChatID)
+	telegramConsumer, err := consumer.NewTelegramConsumer(cfg.RabbitMQURL, tgClient, cfg.ChatID)
 	if err != nil {
 		log.Fatalf("Failed to create Telegram consumer: %v", err)
 	}
@@ -48,7 +43,7 @@ func main() {
 	defer producer.Close()
 
 	// Initialize Bot Handler
-	botHandler := bot.NewHandler(tgClient, producer, defaultChatID)
+	botHandler := bot.NewHandler(tgClient, producer, cfg.ChatID, cfg.SyrveServiceURL, cfg.ProductServiceURL, cfg.WebServiceURL)
 
 	// Start Healthcheck Server
 	app := fiber.New()
@@ -68,14 +63,13 @@ func main() {
 	app.Post("/", handler)
 	app.Post("/webhooks/telegram", handler)
 
-	port := helpers.GetEnv("TELEGRAM_PORT", "8080")
 	go func() {
-		if err := app.Listen(":" + port); err != nil {
+		if err := app.Listen(":" + cfg.Port); err != nil {
 			log.Fatalf("Fiber server failed: %v", err)
 		}
 	}()
 
-	log.Printf("Telegram service started on port %s", port)
+	log.Printf("Telegram service started on port %s", cfg.Port)
 
 	// Graceful Shutdown
 	sigCh := make(chan os.Signal, 1)

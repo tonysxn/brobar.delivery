@@ -27,5 +27,6 @@ export interface Product {
     alcohol: boolean;
     sold: boolean;
     image: string;
+    stock: number | null;
     variation_groups: VariationGroup[];
 }

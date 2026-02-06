@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"errors"
+
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/tonysanin/brobar/pkg/response"
@@ -21,7 +21,7 @@ func NewMenuHandler(categoryService *services.CategoryService) *MenuHandler {
 func (h *MenuHandler) GetMenu(c fiber.Ctx) error {
 	menu, err := h.categoryService.GetMenu(c.Context())
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, errors.New("failed to get menu"))
+		return response.Error(c, fiber.StatusInternalServerError, err)
 	}
 
 	return response.Success(c, menu)

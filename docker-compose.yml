@@ -280,6 +280,9 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
       TELEGRAM_PORT: ${TELEGRAM_PORT}
       SERVICE_PORT: ${TELEGRAM_PORT}
+      SYRVE_SERVICE_URL: ${SYRVE_HOST_PROD}:${SYRVE_PORT}
+      PRODUCT_SERVICE_URL: ${PRODUCT_HOST_PROD}:${PRODUCT_PORT}
+      WEB_SERVICE_URL: ${WEB_HOST_PROD}:${WEB_PORT}
     depends_on:
       rabbitmq:
         condition: service_healthy

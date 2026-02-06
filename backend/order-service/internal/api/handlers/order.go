@@ -235,3 +235,23 @@ func (h *OrderHandler) DeleteOrder(c fiber.Ctx) error {
 
 	return response.Success(c, nil)
 }
+
+func (h *OrderHandler) MarkSyrveNotified(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return response.BadRequest(c, errors.New("invalid order id"))
+	}
+
+	notified, err := h.service.SetSyrveNotified(c.Context(), id)
+	if err != nil {
+		if errors.Is(err, customerrors.OrderNotFound) {
+			return response.NotFound(c)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err)
+	}
+
+	return response.Success(c, fiber.Map{
+		"notified": notified,
+	})
+}

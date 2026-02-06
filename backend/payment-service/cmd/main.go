@@ -2,10 +2,10 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/tonysanin/brobar/payment-service/internal/app"
+	"github.com/tonysanin/brobar/payment-service/internal/config"
 )
 
 func main() {
@@ -13,14 +13,11 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	server := app.NewServer()
-	port := os.Getenv("PAYMENT_SERVICE_PORT")
-	if port == "" {
-		port = "8081"
-	}
+	cfg := config.NewConfig()
+	server := app.NewServer(cfg)
 
-	log.Printf("Payment service starting on port %s", port)
-	if err := server.Listen(":" + port); err != nil {
+	log.Printf("Payment service starting on port %s", cfg.Port)
+	if err := server.Listen(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

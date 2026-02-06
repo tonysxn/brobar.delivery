@@ -296,6 +296,9 @@ services:
       - .env
     environment:
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+      SYRVE_SERVICE_URL: ${SYRVE_HOST}:${SYRVE_PORT}
+      PRODUCT_SERVICE_URL: ${PRODUCT_HOST}:${PRODUCT_PORT}
+      WEB_SERVICE_URL: ${WEB_HOST}:${WEB_PORT}
     volumes:
       - ./backend:/app
       - air_tmp:/app/tmp
@@ -321,6 +324,8 @@ services:
     container_name: brobar_syrve_dev
     env_file:
       - .env
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
     volumes:
       - ./backend:/app
       - air_tmp:/app/tmp
@@ -348,7 +353,6 @@ services:
       - .env
     environment:
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
-      ORDER_SERVICE_URL: http://order-service-dev:${ORDER_PORT}
     volumes:
       - ./backend:/app
       - air_tmp:/app/tmp

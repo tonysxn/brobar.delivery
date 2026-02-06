@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/tonysanin/brobar/pkg/response"
 	"github.com/tonysanin/brobar/web-service/internal/api/handlers"
+	"github.com/tonysanin/brobar/web-service/internal/config"
 	"github.com/tonysanin/brobar/web-service/internal/services"
 )
 
@@ -15,14 +16,14 @@ type Server struct {
 	timeHandler    *handlers.TimeHandler
 }
 
-func NewServer(settingService *services.SettingService, reviewService *services.ReviewService) *Server {
+func NewServer(cfg *config.Config, settingService *services.SettingService, reviewService *services.ReviewService) *Server {
 	s := &Server{
 		app: fiber.New(fiber.Config{
 			AppName: "Web Service",
 		}),
 		settingHandler: handlers.NewSettingHandler(settingService),
 		reviewHandler:  handlers.NewReviewHandler(reviewService),
-		timeHandler:    handlers.NewTimeHandler(),
+		timeHandler:    handlers.NewTimeHandler(cfg.AppTimezone),
 	}
 
 	s.app.Use(compress.New(compress.Config{

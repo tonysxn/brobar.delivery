@@ -39,6 +39,7 @@ type MenuProduct struct {
 	Alcohol         bool                 `json:"alcohol" db:"alcohol"`
 	Sold            bool                 `json:"sold" db:"sold"`
 	Image           string               `json:"image" db:"image"`
+	Stock           *float64             `json:"stock" db:"stock"`
 	VariationGroups []MenuVariationGroup `json:"variation_groups"`
 }
 

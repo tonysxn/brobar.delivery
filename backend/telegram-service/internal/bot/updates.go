@@ -40,13 +40,19 @@ type Handler struct {
 	client        *telegram.Client
 	producer      *rabbitmq.Producer
 	allowedChatID int64
+	syrveURL      string
+	productURL    string
+	webURL        string
 }
 
-func NewHandler(client *telegram.Client, producer *rabbitmq.Producer, allowedChatID int64) *Handler {
+func NewHandler(client *telegram.Client, producer *rabbitmq.Producer, allowedChatID int64, syrveURL, productURL, webURL string) *Handler {
 	return &Handler{
 		client:        client,
 		producer:      producer,
 		allowedChatID: allowedChatID,
+		syrveURL:      syrveURL,
+		productURL:    productURL,
+		webURL:        webURL,
 	}
 }
 
@@ -58,6 +64,17 @@ func (h *Handler) HandleUpdate(body []byte) error {
 
 	if update.CallbackQuery != nil {
 		return h.handleCallbackQuery(update.CallbackQuery)
+	}
+
+	if update.Message != nil {
+		if strings.EqualFold(update.Message.Text, "menu") || 
+		   strings.EqualFold(update.Message.Text, "/menu") || 
+		   update.Message.Text == "Меню" {
+			// Security check
+			if update.Message.Chat.ID == h.allowedChatID {
+				return h.handleMenu(update.Message.Chat.ID)
+			}
+		}
 	}
 
 	return nil
@@ -107,6 +124,18 @@ func (h *Handler) handleCallbackQuery(cq *CallbackQuery) error {
 			h.client.DeleteMessage(cq.Message.Chat.ID, cq.Message.MessageID)
 		}
 		h.client.AnswerCallbackQuery(cq.ID, "Скасовано")
+	} else if action == "compare_stop_list" {
+		// New action for comparing stop lists
+		h.handleCompareStopList(cq.Message.Chat.ID)
+		h.client.AnswerCallbackQuery(cq.ID, "Звіряємо...")
+	} else if action == "toggle_sales_paused" {
+		if cq.Message != nil {
+			h.handleToggleSalesPaused(cq.Message.Chat.ID, cq.Message.MessageID)
+		}
+		h.client.AnswerCallbackQuery(cq.ID, "Оновлюємо...")
+	} else if action == "show_stock" {
+		h.handleShowStock(cq.Message.Chat.ID)
+		h.client.AnswerCallbackQuery(cq.ID, "Формуємо...")
 	} else {
 		// Unknown callback
 		h.client.AnswerCallbackQuery(cq.ID, "")

@@ -34,6 +34,7 @@ type Order struct {
 	PaymentMethod     string       `json:"payment_method,omitempty" db:"payment_method"`
 	Zone              *string      `json:"zone,omitempty" db:"zone"`
 	InvoiceID         *string      `json:"invoice_id,omitempty" db:"invoice_id"`
+	SyrveNotified     bool         `json:"syrve_notified" db:"syrve_notified"`
 	PaymentURL        string       `json:"payment_url,omitempty" db:"-"`
 
 	Items []OrderItem `json:"items" db:"-"`

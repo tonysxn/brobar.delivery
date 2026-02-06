@@ -5,8 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/tonysanin/brobar/pkg/helpers"
 	"github.com/tonysanin/brobar/product-service/internal/api"
+	"github.com/tonysanin/brobar/product-service/internal/config"
+	"github.com/tonysanin/brobar/product-service/internal/consumer"
 	"github.com/tonysanin/brobar/product-service/internal/repositories"
 	"github.com/tonysanin/brobar/product-service/internal/services"
 
@@ -18,9 +19,9 @@ import (
 func main() {
 	_ = godotenv.Load(".env")
 
-	port := helpers.GetEnv("PRODUCT_PORT", "1")
+	cfg := config.NewConfig()
 
-	db, err := InitDatabase()
+	db, err := InitDatabase(cfg)
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
@@ -51,20 +52,24 @@ func main() {
 
 	server := api.NewServer(productService, categoryService, variationService, variationGroupService)
 
-	log.Printf("Starting server on :%s", port)
-	if err := server.Listen(":" + port); err != nil {
+	// Start RabbitMQ Consumer
+	rabbitConsumer, err := consumer.NewConsumer(cfg.RabbitMQURL, productService)
+	if err != nil {
+		log.Printf("Failed to create consumer: %v", err)
+	} else {
+		if err := rabbitConsumer.Start(); err != nil {
+			log.Printf("Failed to start consumer: %v", err)
+		} else {
+			defer rabbitConsumer.Stop()
+		}
+	}
+
+	log.Printf("Starting server on :%s", cfg.Port)
+	if err := server.Listen(":" + cfg.Port); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
 
-func InitDatabase() (*sqlx.DB, error) {
-	connStr := "postgres://" +
-		helpers.GetEnv("DB_USER", "") + ":" +
-		helpers.GetEnv("DB_PASSWORD", "") + "@" +
-		helpers.GetEnv("DB_HOST", "") + ":" +
-		helpers.GetEnv("DB_PORT", "") + "/" +
-		helpers.GetEnv("DB_NAME", "") + "?sslmode=" +
-		helpers.GetEnv("DB_SSLMODE", "disable")
-
-	return sqlx.Connect("postgres", connStr)
+func InitDatabase(cfg *config.Config) (*sqlx.DB, error) {
+	return sqlx.Connect("postgres", cfg.GetDatabaseURL())
 }

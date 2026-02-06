@@ -162,9 +162,23 @@ func (s *ValidationService) GetDeliveryCost(coords string, deliveryDoor bool, ca
 		doorPrice, err := s.webClient.GetDeliveryDoorPrice()
 		if err == nil {
 			doorPartPrice = doorPrice
-			zonePrice += doorPrice
 		}
 	}
 
 	return zonePrice, doorPartPrice, zone, nil
+}
+
+// ValidateAndNormalizePaymentMethod validates and normalizes payment method
+// Returns: normalized_method, error
+func (s *ValidationService) ValidateAndNormalizePaymentMethod(method string) (string, error) {
+	method = strings.ToLower(strings.TrimSpace(method))
+
+	switch method {
+	case "cash", "terminal":
+		return "cash", nil
+	case "bank", "online", "card", "cashless":
+		return "online", nil
+	default:
+		return "", fmt.Errorf("невідомий метод оплати: %s", method)
+	}
 }

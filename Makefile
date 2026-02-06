@@ -50,10 +50,16 @@ test:
 	cd backend && go test -v ./tests/...
 
 webhook-install:
-	cd backend && go run cmd/webhook-tool/main.go install
+	docker exec -t $$(docker ps -q -f "name=^brobar_telegram_dev$$" -f "name=^brobar_telegram$$" | head -n 1) go run cmd/webhook-tool/main.go install
 
 webhook-remove:
-	cd backend && go run cmd/webhook-tool/main.go remove
+	docker exec -t $$(docker ps -q -f "name=^brobar_telegram_dev$$" -f "name=^brobar_telegram$$" | head -n 1) go run cmd/webhook-tool/main.go remove
+
+syrve-install:
+	docker exec -t $$(docker ps -q -f "name=^brobar_syrve_dev$$" -f "name=^brobar_syrve$$" | head -n 1) go run cmd/syrve-tool/main.go install
+
+syrve-remove:
+	docker exec -t $$(docker ps -q -f "name=^brobar_syrve_dev$$" -f "name=^brobar_syrve$$" | head -n 1) go run cmd/syrve-tool/main.go remove
 
 restore-data:
 	./scripts/restore_data.sh

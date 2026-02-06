@@ -33,9 +33,9 @@ export default function Welcome() {
                         priority
                     />
                     <div className="flex flex-col items-center text-white py-24 md:py-36 relative">
-                        <div className="flex flex-col items-center gap-2 drop-shadow-xl backdrop-blur-md bg-black/20 px-8 py-8 rounded-2xl">
-                            <div className="flex flex-col items-center">
-                                <span className="banner-text-lg font-extrabold w-fit mx-auto">
+                        <div className="flex flex-col items-center gap-2 drop-shadow-xl backdrop-blur-md bg-black/20 px-4 py-6 md:px-8 md:py-8 rounded-2xl w-[90%] md:w-auto text-center mx-auto">
+                            <div className="flex flex-col items-center w-full">
+                                <span className="banner-text-lg font-extrabold w-fit mx-auto break-words max-w-full">
                                     Гарячі страви
                                 </span>
                             </div>
@@ -44,8 +44,11 @@ export default function Welcome() {
                             <span className="banner-text-sm font-semibold text-brand mb-6 w-fit mx-auto">
                                 при мінімальному замовленні
                             </span>
-                            <Link href="/menu">
-                                <Button size="lg" className="cursor-pointer background-dark text-white text-xl font-bold px-10 py-6 shadow-lg shadow-black/50 hover:scale-105 hover:shadow-xl hover:shadow-black/60 transition-all duration-200">
+                            <Link href="/menu" className="w-full md:w-auto">
+                                {/* Исправленная кнопка */}
+                                <Button
+                                    className="cursor-pointer background-dark text-white text-lg md:text-xl font-bold px-5 py-3 md:px-10 md:py-6 shadow-lg shadow-black/50 hover:scale-105 hover:shadow-xl hover:shadow-black/60 transition-all duration-200 w-full md:w-auto"
+                                >
                                     Заглянути у меню 🍔
                                 </Button>
                             </Link>

@@ -27,89 +27,120 @@ export default function Header() {
         setIsCartOpen(true);
     };
 
-    return (
-        <div className="sticky top-0 z-50 w-full">
-            <header
-                className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-2 pb-1">
-                <div className="container mx-auto flex items-center justify-between px-4 h-full pb-2">
-                    <div className="flex-1 flex justify-start">
-                        <Link className="flex flex-row gap-2" href="/">
-                            <Image
-                                src={Logo}
-                                alt="Logo"
-                                width={60}
-                                height={60}
-                                className="block h-auto w-[60px]"
-                                priority
-                            />
-                            <div className="flex flex-col align-middle justify-center">
-                                <span className="font-bold">
-                                    BROBAR
-                                </span>
-                                <span className="text-[12px] font-bold text-gray-400">
-                                    Ресторан
-                                </span>
-                            </div>
+    const HeaderContent = ({ className, isSpacer = false }: { className?: string, isSpacer?: boolean }) => {
+        // Базовые классы для навигационной панели
+        const navClasses = "container mx-auto px-4 gap-5 overflow-x-auto whitespace-nowrap scrollbar-hide";
+        // Условные классы отображения
+        const displayClasses = isMobileMenuPage ? "hidden md:flex" : "flex";
+
+        // If spacer, suppress hydration warnings heavily and ensure no IDs collide if strict checks exist (usually fine for layout)
+        // Actually, let's keep it simple.
+
+        return (
+            <div className={className}>
+                <header
+                    className="w-full bg-background/80 backdrop-blur-md pt-2 pb-1 transform-gpu translate-z-0 shadow-sm">
+                    <div className="container mx-auto flex items-center justify-between px-4 h-full pb-2">
+                        <div className="flex-1 flex justify-start">
+                            <Link className="flex flex-row gap-2" href="/" tabIndex={isSpacer ? -1 : 0}>
+                                <Image
+                                    src={Logo}
+                                    alt="Logo"
+                                    width={60}
+                                    height={60}
+                                    className="block h-auto w-[60px]"
+                                    priority
+                                />
+                                <div className="flex flex-col align-middle justify-center">
+                                    <span className="font-bold">
+                                        BROBAR
+                                    </span>
+                                    <span className="text-[12px] font-bold text-gray-400">
+                                        Ресторан
+                                    </span>
+                                </div>
+                            </Link>
+                        </div>
+
+                        <div className="flex-1 flex justify-center">
+                        </div>
+
+                        <div className="flex-1 flex justify-end items-center space-x-6">
+                            <Button
+                                size="lg"
+                                className="cart-button hidden md:flex items-center cursor-pointer"
+                                onClick={!isSpacer ? handleCartClick : undefined}
+                                tabIndex={isSpacer ? -1 : 0}
+                            >
+                                <Package className="size-6" />
+                                <div>
+                                    Кошик - <span>{cartTotal}</span> ₴
+                                </div>
+                            </Button>
+
+                            {isMobileMenuPage && (
+                                <div onClick={!isSpacer ? () => setIsMenuOpen(true) : undefined} className="cursor-pointer md:hidden">
+                                    <Menu size={40} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Исправленная навигация с подавлением ошибок гидратации */}
+                    <div
+                        className={`${navClasses} ${displayClasses}`}
+                        suppressHydrationWarning={true}
+                    >
+                        <Link
+                            href="/"
+                            className={`${pathname === "/" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
+                            tabIndex={isSpacer ? -1 : 0}
+                        >
+                            Головна
+                        </Link>
+                        <Link
+                            href="/menu"
+                            className={`${pathname === "/menu" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
+                            tabIndex={isSpacer ? -1 : 0}
+                        >
+                            Меню
+                        </Link>
+                        <Link
+                            href="/reviews"
+                            className={`${pathname === "/reviews" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
+                            suppressHydrationWarning={true}
+                            tabIndex={isSpacer ? -1 : 0}
+                        >
+                            {/* Используем span-обертки для надежности */}
+                            <span className="md:hidden">Відгуки</span>
+                            <span className="hidden md:inline">Залишити відгук</span>
                         </Link>
                     </div>
+                </header>
 
-                    <div className="flex-1 flex justify-center">
-                    </div>
-
-                    <div className="flex-1 flex justify-end items-center space-x-6">
-                        <Button
-                            size="lg"
-                            className="cart-button hidden md:flex items-center cursor-pointer"
-                            onClick={handleCartClick}
-                        >
-                            <Package className="size-6" />
-                            <div>
-                                Кошик - <span>{cartTotal}</span> ₴
-                            </div>
-                        </Button>
-
-                        {isMobileMenuPage && (
-                            <div onClick={() => setIsMenuOpen(true)} className="cursor-pointer md:hidden">
-                                <Menu size={40} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className={`container mx-auto px-4 gap-5 ${isMobileMenuPage ? "hidden md:flex" : "flex"}`}>
-                    <Link
-                        href="/"
-                        className={`${pathname === "/" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
+                {isMobileMenuPage && (
+                    <div
+                        className="md:hidden w-full bg-primary text-white py-2 px-4 flex justify-between items-center cursor-pointer"
+                        onClick={!isSpacer ? handleCartClick : undefined}
                     >
-                        Головна
-                    </Link>
-                    <Link
-                        href="/menu"
-                        className={`${pathname === "/menu" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
-                    >
-                        Меню
-                    </Link>
-                    <Link
-                        href="/reviews"
-                        className={`${pathname === "/reviews" ? "border-b-2 border-brand" : "border-b-2 border-transparent"}`}
-                    >
-                        Залишити відгук
-                    </Link>
-                </div>
-            </header>
-
-            {isMobileMenuPage && (
-                <div
-                    className="md:hidden w-full bg-primary text-white py-2 px-4 flex justify-between items-center cursor-pointer"
-                    onClick={handleCartClick}
-                >
-                    <div className="flex flex-row gap-2 items-center">
-                        <Package className="size-[32px] text-black" />
-                        <span className="font-medium text-black text-sm">Кошик</span>
+                        <div className="flex flex-row gap-2 items-center">
+                            <Package className="size-[32px] text-black" />
+                            <span className="font-medium text-black text-sm">Кошик</span>
+                        </div>
+                        <span className="font-medium text-black text-sm">{cartTotal} ₴</span>
                     </div>
-                    <span className="font-medium text-black text-sm">{cartTotal} ₴</span>
-                </div>
-            )}
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <>
+            {/* Real Fixed Header */}
+            <HeaderContent className="fixed top-0 left-0 right-0 z-50 w-full" />
+
+            {/* Invisible Spacer Header (Static Position) */}
+            <HeaderContent className="relative opacity-0 pointer-events-none select-none w-full" isSpacer={true} />
 
             {/* Cart Drawer */}
             <CartDrawer />
@@ -171,6 +202,6 @@ export default function Header() {
                     </nav>
                 </div>
             </div>
-        </div>
+        </>
     )
 }

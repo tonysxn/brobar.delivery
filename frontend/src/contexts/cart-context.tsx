@@ -1,46 +1,8 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-// Types
-interface Variation {
-    id: string;
-    name: string;
-    external_id: string;
-    show: boolean;
-}
-
-interface VariationGroup {
-    id: string;
-    name: string;
-    external_id: string;
-    show: boolean;
-    required: boolean;
-    variations: Variation[];
-}
-
-interface Product {
-    id: string;
-    external_id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    price: number;
-    weight: number | null;
-    sort: number;
-    hidden: boolean;
-    alcohol: boolean;
-    sold: boolean;
-    image: string;
-    variation_groups: VariationGroup[];
-}
-
-export interface CartItem {
-    id: string;
-    product: Product;
-    selectedVariations: Record<string, Variation>;
-    quantity: number;
-}
+import { Product, Variation, VariationGroup } from "@/types/product";
+import { CartItem } from "@/types/cart";
 
 interface CartContextType {
     cart: CartItem[];

@@ -1,9 +1,9 @@
-tunnel: 4837d56d-9607-4ef8-ad99-56c7ec21c1a8
+tunnel: 8ffcc5ff-2d7e-4af6-ae66-8443422fc333
 
 
 ingress:
   - hostname: dev.brobar.delivery
-    service: http://10.255.255.254:80
+    service: http://localhost:80
   - hostname: admin.brobar.delivery
-    service: http://10.255.255.254:80
+    service: http://localhost:80
   - service: http_status:404

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSettings } from "@/contexts/settings-context";
 import { useDeliveryZones } from "@/hooks/use-delivery-zones";
+import { DeliveryZone, SearchResult } from "@/types/delivery";
 
 const containerStyle = {
     width: '100%',
@@ -19,22 +20,6 @@ const defaultCenter = {
 };
 
 const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
-
-export interface DeliveryZone {
-    radius: number;
-    innerRadius: number;
-    color: string;
-    price: number;
-    freeOrderPrice: number;
-    name: string;
-}
-
-export interface SearchResult {
-    zone?: DeliveryZone;
-    distance?: number;
-    address?: string;
-    coords?: { lat: number; lng: number };
-}
 
 interface DeliveryMapProps {
     onLocationSelect?: (result: SearchResult) => void;

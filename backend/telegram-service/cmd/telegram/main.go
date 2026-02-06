@@ -11,7 +11,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/tonysanin/brobar/pkg/helpers"
 	"github.com/tonysanin/brobar/pkg/response"
+	"github.com/tonysanin/brobar/pkg/rabbitmq"
 	"github.com/tonysanin/brobar/pkg/telegram"
+	"github.com/tonysanin/brobar/telegram-service/internal/bot"
 	"github.com/tonysanin/brobar/telegram-service/internal/consumer"
 )
 
@@ -41,16 +43,30 @@ func main() {
 		log.Fatalf("Failed to start Telegram consumer: %v", err)
 	}
 
+	// Initialize RabbitMQ Producer (for responses)
+	producer := rabbitmq.NewProducer()
+	defer producer.Close()
+
+	// Initialize Bot Handler
+	botHandler := bot.NewHandler(tgClient, producer, defaultChatID)
+
 	// Start Healthcheck Server
 	app := fiber.New()
 	app.Get("/health", func(c fiber.Ctx) error {
 		return response.Success(c, fiber.Map{"status": "ok"})
 	})
 
-	app.Post("/", func(c fiber.Ctx) error {
-		log.Printf("Received Telegram Update: %s", string(c.Body()))
+	handler := func(c fiber.Ctx) error {
+		// Log just in case (optional)
+		// log.Printf("Received Telegram Update: %s", string(c.Body()))
+		if err := botHandler.HandleUpdate(c.Body()); err != nil {
+			log.Printf("Error handling update: %v", err)
+		}
 		return c.SendStatus(200)
-	})
+	}
+
+	app.Post("/", handler)
+	app.Post("/webhooks/telegram", handler)
 
 	port := helpers.GetEnv("TELEGRAM_PORT", "8080")
 	go func() {

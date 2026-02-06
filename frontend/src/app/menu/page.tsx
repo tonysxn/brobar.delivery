@@ -24,7 +24,7 @@ import { ShopStatusAlert } from "@/components/shop-status-alert";
 import { ProductCard } from "@/components/menu/product-card";
 import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 
-// Helper to convert icon name to PascalCase (e.g., "utensils" -> "Utensils", "concierge-bell" -> "ConciergeBell")
+// Helper to convert icon name to PascalCase
 const toPascalCase = (str: string): string => {
     return str
         .split(/[-_]/)
@@ -32,7 +32,7 @@ const toPascalCase = (str: string): string => {
         .join('');
 };
 
-// Dynamic icon getter - any lucide icon name will work
+// Dynamic icon getter
 const getIconByName = (iconName: string | undefined | null): LucideIcon => {
     if (!iconName) return Package;
     const pascalName = toPascalCase(iconName);
@@ -51,10 +51,6 @@ interface Category {
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
 
 export default function Menu() {
-    const [expanded, setExpanded] = useState(false);
-    const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
-    const contentRef = useRef<HTMLDivElement>(null);
-    const [height, setHeight] = useState("0px");
     const [isSticky, setIsSticky] = useState(false);
 
     // API data state
@@ -102,51 +98,23 @@ export default function Menu() {
         fetchMenu();
     }, []);
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const nav = document.getElementById("categories-nav");
-            if (nav) {
-                const rect = nav.getBoundingClientRect();
-                // Disable sticky effect on desktop (lg breakpoint is 1024px)
-                if (window.innerWidth >= 1024) {
-                    setIsSticky(false);
-                    return;
-                }
-                // Check sticky threshold based on screen size (matching CSS top values)
-                const threshold = window.innerWidth >= 768 ? 106 : 128;
-                setIsSticky(rect.top <= threshold);
-            }
-        };
-
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    const toggleExpanded = () => {
-        if (expanded) {
-            setHeight("0px");
-            setExpanded(false);
-        } else {
-            const scrollHeight = contentRef.current?.scrollHeight || 0;
-            setHeight(`${scrollHeight}px`);
-            setExpanded(true);
-        }
-    };
-
-    const handleChange = (type: "delivery" | "pickup") => {
-        setDeliveryType(type);
-        setHeight("0px");
-        setExpanded(false);
-    };
-
-    const deliveryLabel = deliveryType === "delivery" ? "Доставка" : "З собою";
-    const DeliveryIcon = deliveryType === "delivery" ? Package : MapPin;
+    // Nav becomes sticky at Top: 137px (Mobile) / 116.25px (Tablet)
+    // Removed complex observer logic in favor of permanent fixed layout on mobile.
 
     const onCategoryClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
         e.preventDefault();
         const el = document.getElementById(slug);
+        // Adjust offset for the fixed header height
+        const headerOffset = window.innerWidth >= 768 ? 170 : 190; // Tuned for fixed nav
+
         if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            const elementPosition = el.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: "smooth"
+            });
         }
     };
 
@@ -154,18 +122,14 @@ export default function Menu() {
         return getIconByName(iconName);
     };
 
-    // Check if product has required variations
     const hasVariations = (product: Product): boolean => {
         return product.variation_groups && product.variation_groups.length > 0;
     };
 
-    // Add to cart handler
     const handleAddToCart = (product: Product) => {
         if (hasVariations(product)) {
-            // Open variation selection modal
             setSelectedProduct(product);
-            setQuantity(1); // Reset quantity
-            // Pre-select first variation for each group
+            setQuantity(1);
             const initialSelections: Record<string, Variation> = {};
             product.variation_groups.forEach(group => {
                 if (group.variations.length > 0) {
@@ -175,13 +139,11 @@ export default function Menu() {
             setTempSelectedVariations(initialSelections);
             setVariationModalOpen(true);
         } else {
-            // Add directly to cart (1 item)
             addToCart(product, {}, 1);
             toast.success("Товар додано до кошика");
         }
     };
 
-    // Confirm variation selection and add to cart
     const confirmVariationSelection = () => {
         if (selectedProduct) {
             addToCart(selectedProduct, tempSelectedVariations, quantity);
@@ -190,7 +152,6 @@ export default function Menu() {
         }
     };
 
-    // Skeleton Component
     const MenuSkeleton = () => (
         <div className="flex-1 space-y-8 animate-pulse">
             {[1, 2, 3].map((categoryIndex) => (
@@ -231,21 +192,56 @@ export default function Menu() {
         );
     }
 
+    // Helper component for Navigation to avoid duplication
+    const CategoriesNav = ({ className, id }: { className: string, id?: string }) => (
+        <nav
+            id={id}
+            className={`flex flex-row lg:flex-col overflow-x-auto no-scrollbar gap-4 lg:gap-0 transition-all duration-300 transform-gpu translate-z-0 ${className}`}
+        >
+            {categories.map((category) => {
+                const Icon = getIcon(category.icon);
+                return (
+                    <a
+                        key={category.id}
+                        href={`#${category.slug}`}
+                        onClick={e => onCategoryClick(e, category.slug)}
+                        className={`flex items-center gap-2 mb-0 lg:mb-4 text-sm lg:text-lg cursor-pointer select-none whitespace-nowrap border lg:border-none px-3 py-2 rounded-full lg:px-0 lg:py-0 bg-secondary/10 hover:text-gray-300 lg:bg-transparent`}
+                    >
+                        <Icon size={20} className="lg:w-[24px] lg:h-[24px]" />
+                        <span>{category.name}</span>
+                    </a>
+                );
+            })}
+        </nav>
+    );
+
     return (
         <div>
             <Header />
 
-            {/* Shop Status Alert */}
+            {/* Spacer to compensate for fixed nav taking up space */}
+            <div className="lg:hidden h-[67px] w-full shrink-0" />
+
             <ShopStatusAlert deliveryOpen={deliveryOpen} pickupOpen={pickupOpen} />
 
             <main className="container mx-auto px-4 pt-[25px] pb-[25px] flex flex-col lg:flex-row gap-4 lg:gap-4 xl:gap-10">
-                {/* Mobile Info Accordion */}
-                <div className="lg:hidden w-full mb-4">
+                {/* MOBILE LAYOUT STRATEGY: 
+                    1. Fixed Categories Nav (Pinned to top).
+                    2. Spacer (To hold layout).
+                    3. Info Accordion (Scrolls).
+                */}
+
+                {/* 1. Mobile Fixed Categories Nav */}
+                <div className="lg:hidden fixed left-0 right-0 z-40 top-[137px] md:top-[116.25px] bg-background/80 backdrop-blur-md shadow-sm border-b border-white/5">
+                    <CategoriesNav
+                        className="w-full px-4 py-2"
+                    />
+                </div>
+                {/* 3. Mobile Info Accordion */}
+                <div id="menu-info-accordion" className="lg:hidden w-full mb-4 mt-2">
                     <Accordion type="single" collapsible>
                         <AccordionItem value="info" className="border-b-0">
-                            <AccordionTrigger
-                                className="py-0 text-lg font-semibold"
-                            >
+                            <AccordionTrigger className="py-0 text-lg font-semibold">
                                 Інформація про заклад
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 pb-4">
@@ -300,32 +296,13 @@ export default function Menu() {
                     </Accordion>
                 </div>
 
-                <div className="contents lg:flex lg:flex-col gap-3 w-full lg:w-[230px] xl:w-[275px] lg:sticky lg:self-start lg:top-32 lg:z-20 pb-4 lg:pb-0 pt-2 lg:pt-0">
-                    <nav
-                        id="categories-nav"
-                        className={`sticky top-[128px] md:top-[106px] z-30 py-2 lg:py-0 lg:static lg:bg-transparent flex flex-row lg:flex-col overflow-x-auto no-scrollbar gap-4 lg:gap-0 transition-all duration-300 ${isSticky
-                            ? "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-[100vw] ml-[calc(50%-50vw)] px-4 shadow-sm"
-                            : "bg-transparent mx-0 px-0"
-                            } lg:w-full lg:ml-0 lg:px-0`}
-                    >
-                        {categories.map((category) => {
-                            const Icon = getIcon(category.icon);
-                            return (
-                                <a
-                                    key={category.id}
-                                    href={`#${category.slug}`}
-                                    onClick={e => onCategoryClick(e, category.slug)}
-                                    className={`flex items-center gap-2 mb-0 lg:mb-4 text-sm lg:text-lg cursor-pointer select-none whitespace-nowrap border lg:border-none px-3 py-2 rounded-full lg:px-0 lg:py-0 ${isSticky
-                                        ? "bg-secondary/10 hover:bg-secondary/20"
-                                        : "bg-secondary/10 hover:text-gray-300 lg:bg-transparent"
-                                        }`}
-                                >
-                                    <Icon size={20} className="lg:w-[24px] lg:h-[24px]" />
-                                    <span className={isSticky ? "lg:inline" : ""}>{category.name}</span>
-                                </a>
-                            );
-                        })}
-                    </nav>
+                {/* DESKTOP LAYOUT STRATEGY:
+                    Sticky Sidebar for Categories.
+                */}
+                <div className="hidden lg:flex flex-col gap-3 w-full lg:w-[230px] xl:w-[275px] sticky self-start top-32 z-20">
+                    <CategoriesNav
+                        className="w-full bg-transparent"
+                    />
                 </div>
 
                 <section className="flex-1 divide-y divide-white/10 border rounded-md p-4 mt-0">
@@ -352,6 +329,7 @@ export default function Menu() {
                 </section>
 
                 <div className="hidden lg:flex flex-col gap-3 w-full lg:w-[230px] xl:w-[275px] sticky self-start top-auto lg:top-32 z-10 pb-10 lg:pb-0">
+                    {/* Desktop Sidebar Info - Unchanged */}
                     <div className="font-semibold text-lg lg:text-base">
                         Інформація про заклад
                     </div>
@@ -405,15 +383,11 @@ export default function Menu() {
 
             {/* Variation Selection Modal */}
             <div className={`fixed inset-0 z-[70] flex items-center justify-center transition-all duration-150 ${variationModalOpen ? "visible" : "invisible"}`}>
-                {/* Backdrop with blur */}
                 <div
                     className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-150 ${variationModalOpen ? "opacity-100" : "opacity-0"}`}
                     onClick={() => setVariationModalOpen(false)}
                 />
-
-                {/* Modal */}
                 <div className={`relative bg-gradient-to-b from-[#1d1d1d] to-[#141414] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transition duration-150 will-change-transform ${variationModalOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}>
-                    {/* Close button */}
                     <button
                         onClick={() => setVariationModalOpen(false)}
                         className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors duration-100 cursor-pointer"
@@ -423,7 +397,6 @@ export default function Menu() {
 
                     {selectedProduct && (
                         <>
-                            {/* Product info */}
                             <div className="flex items-start gap-4 mb-6">
                                 <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
                                     <ImageWithFallback
@@ -439,7 +412,6 @@ export default function Menu() {
                                 </div>
                             </div>
 
-                            {/* Variation groups */}
                             <div className="space-y-5">
                                 {selectedProduct.variation_groups.map((group) => (
                                     <div key={group.id}>
@@ -478,7 +450,6 @@ export default function Menu() {
                                 ))}
                             </div>
 
-                            {/* Quantity Controls in Modal */}
                             <div className="flex items-center justify-center gap-4 my-6 py-4 border-t border-b border-white/5">
                                 <button
                                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -495,7 +466,6 @@ export default function Menu() {
                                 </button>
                             </div>
 
-                            {/* Confirm button */}
                             <Button
                                 onClick={confirmVariationSelection}
                                 className="w-full h-14 text-lg font-bold text-black bg-primary hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/25 transition duration-100 hover:shadow-primary/40 hover:scale-[1.02] cursor-pointer"

@@ -36,9 +36,10 @@ type InlineKeyboardMarkup struct {
 }
 
 type InlineKeyboardButton struct {
-	Text     string                        `json:"text"`
-	URL      string                        `json:"url,omitempty"`
-	CopyText *InlineKeyboardButtonCopyText `json:"copy_text,omitempty"`
+	Text         string                        `json:"text"`
+	URL          string                        `json:"url,omitempty"`
+	CallbackData string                        `json:"callback_data,omitempty"`
+	CopyText     *InlineKeyboardButtonCopyText `json:"copy_text,omitempty"`
 }
 
 type InlineKeyboardButtonCopyText struct {
@@ -116,6 +117,14 @@ func (c *Client) send(method string, payload interface{}) error {
 	return nil
 }
 
+func (c *Client) AnswerCallbackQuery(callbackQueryID string, text string) error {
+	payload := map[string]string{
+		"callback_query_id": callbackQueryID,
+		"text":              text,
+	}
+	return c.send("answerCallbackQuery", payload)
+}
+
 func (c *Client) SetWebhook(url string) error {
 	payload := map[string]string{
 		"url": url,
@@ -125,4 +134,12 @@ func (c *Client) SetWebhook(url string) error {
 
 func (c *Client) DeleteWebhook() error {
 	return c.send("deleteWebhook", nil)
+}
+
+func (c *Client) DeleteMessage(chatID int64, messageID int) error {
+	payload := map[string]interface{}{
+		"chat_id":    chatID,
+		"message_id": messageID,
+	}
+	return c.send("deleteMessage", payload)
 }

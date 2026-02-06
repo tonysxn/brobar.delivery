@@ -16,6 +16,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   product_db:
     container_name: "product_db"
@@ -34,6 +39,11 @@ services:
       retries: 10
     networks:
       - brobar_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   order_db:
     container_name: order_db
@@ -53,6 +63,11 @@ services:
       start_period: 15s
     networks:
       - brobar_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   user_db:
     container_name: "user_db"
@@ -71,6 +86,11 @@ services:
       retries: 10
     networks:
       - brobar_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   product-service:
     build:
@@ -96,6 +116,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   payment-service:
     build:
@@ -116,6 +141,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   order-service:
     build:
@@ -146,6 +176,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   user-service:
     build:
@@ -171,6 +206,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   file-service:
     build:
@@ -188,6 +228,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   gateway-service:
     build:
@@ -219,6 +264,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   telegram-service:
     build:
@@ -236,6 +286,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   syrve-service:
     build:
@@ -252,6 +307,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
@@ -271,6 +331,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   admin-panel:
     build:
@@ -286,6 +351,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web_db:
     container_name: web_db
@@ -305,6 +375,11 @@ services:
       start_period: 15s
     networks:
       - brobar_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web-service:
     build:
@@ -330,6 +405,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     image: nginx:alpine
@@ -349,6 +429,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   product_db:

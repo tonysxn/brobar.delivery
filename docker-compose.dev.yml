@@ -18,6 +18,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   product_db:
     container_name: product_db
@@ -39,6 +44,11 @@ services:
       - brobar_net
     ports:
       - "5433:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   order_db:
     container_name: order_db
@@ -60,6 +70,11 @@ services:
       - brobar_net
     ports:
       - "5435:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   user_db:
     container_name: user_db
@@ -81,6 +96,11 @@ services:
       - brobar_net
     ports:
       - "5434:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   product-service-dev:
     build:
@@ -112,6 +132,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   payment-service-dev:
     build:
@@ -135,6 +160,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   order-service-dev:
     build:
@@ -167,6 +197,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   user-service-dev:
     build:
@@ -198,6 +233,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   file-service-dev:
     build:
@@ -217,6 +257,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   gateway-service-dev:
     build:
@@ -236,6 +281,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   telegram-service-dev:
     build:
@@ -258,6 +308,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   syrve-service-dev:
     build:
@@ -278,15 +333,47 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ontaxi-service-dev:
+    build:
+      context: backend
+      dockerfile: ontaxi-service/dev.dockerfile
+    container_name: brobar_ontaxi_dev
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
+      ORDER_SERVICE_URL: http://order-service-dev:${ORDER_PORT}
+    volumes:
+      - ./backend:/app
+      - air_tmp:/app/tmp
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - brobar_net
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend-dev:
     build:
       context: frontend
       dockerfile: dev.dockerfile
     container_name: brobar_frontend_dev
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./frontend:/app
-      - /app/node_modules
     ports:
       - "3005:3000"
     environment:
@@ -296,6 +383,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   admin-panel-dev:
     build:
@@ -304,7 +396,6 @@ services:
     container_name: brobar_admin_dev
     volumes:
       - ./admin:/app
-      - /app/node_modules
     ports:
       - "4000:3000"
     environment:
@@ -312,6 +403,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web_db:
     container_name: web_db
@@ -333,6 +429,11 @@ services:
       - brobar_net
     ports:
       - "5436:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web-service-dev:
     build:
@@ -361,6 +462,11 @@ services:
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx-dev:
     image: nginx:alpine
@@ -378,9 +484,15 @@ services:
     depends_on:
       - frontend-dev
       - admin-panel-dev
+      - gateway-service-dev
     networks:
       - brobar_net
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   product_db:

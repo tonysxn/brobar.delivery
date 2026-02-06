@@ -120,13 +120,12 @@ if [ "$NEEDS_RECREATION" = true ]; then
 fi
 
 # ALWAYS update ingress to point to the correct Host IP (for WSL)
-if [ "$HOST_IP" != "localhost" ]; then
-    echo "Updating ingress to use Host IP: $HOST_IP"
-    # Replace localhost with HOST_IP in http services
-    sed -i "s|service: http://localhost|service: http://$HOST_IP|g" "$CONFIG"
-    # Also handle previous runs where it might be an old IP (regex match ip)
-    sed -i "s|service: http://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+|service: http://$HOST_IP|g" "$CONFIG"
-fi
+# ALWAYS update ingress to point to the correct Host IP
+echo "Updating ingress to use Host IP: $HOST_IP"
+# Replace localhost with HOST_IP in http services
+sed -i "s|service: http://localhost|service: http://$HOST_IP|g" "$CONFIG"
+# Also handle previous runs where it might be an old IP (regex match ip)
+sed -i "s|service: http://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+|service: http://$HOST_IP|g" "$CONFIG"
     
 # 4. Setup DNS Routes
     echo "Configuring DNS routes..."

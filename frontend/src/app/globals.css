@@ -27,8 +27,14 @@
   src: url(/fonts/roboto-700.woff2) format("woff2");
 }
 
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   font-family: 'BrobarFont', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Override Google Maps fonts to use our local fonts */

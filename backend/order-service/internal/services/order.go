@@ -198,8 +198,8 @@ func (s *OrderService) CreateOrderFromInput(ctx context.Context, input *CreateOr
 		params := payment.InitPaymentInput{
 			Amount:      int(serverTotal * 100),
 			OrderID:     order.ID.String(),
-			RedirectURL: fmt.Sprintf("https://%s/order/success", helpers.GetEnv("NGINX_DOMAIN", "brobar.com.ua")),
-			WebhookURL:  helpers.GetEnv("PAYMENT_WEBHOOK_URL", "https://api.brobar.delivery/payment-service/webhooks/monobank"),
+			RedirectURL: fmt.Sprintf("https://%s/order/success", helpers.GetEnv("NGINX_DOMAIN", "brobar.delivery")),
+			WebhookURL:  fmt.Sprintf("https://%s/api/payment-service/webhooks/monobank", helpers.GetEnv("NGINX_DOMAIN", "brobar.delivery")),
 			Basket:      s.getBasketOrders(order),
 		}
 
@@ -524,11 +524,52 @@ func (s *OrderService) sendOrderNotification(order *models.Order) {
 	}
 
 	// Construct Inline Keyboard safely
-	keyboard := map[string]interface{}{
-		"inline_keyboard": [][]map[string]string{
-			{
-				{"text": "📍 Карта", "url": mapLink},
+	// Construct Inline Keyboard safely
+	// We need to replicate SendProfile logic + add our button
+	// SendProfile adds: Map (if link), Phone Copy (if phone), Address Copy (if address)
+	
+	var buttons []interface{}
+	
+	// 1. Map
+	if mapLink != "" {
+		buttons = append(buttons, map[string]interface{}{
+			"text": "📍",
+			"url":  mapLink,
+		})
+	}
+	
+	// 2. Phone Copy
+	if order.Phone != "" {
+		buttons = append(buttons, map[string]interface{}{
+			"text": "📞",
+			"copy_text": map[string]string{
+				"text": order.Phone,
 			},
+		})
+	}
+	
+	// 3. Address Copy
+	if order.Address != "" {
+		buttons = append(buttons, map[string]interface{}{
+			"text": "🏠",
+			"copy_text": map[string]string{
+				"text": order.Address,
+			},
+		})
+	}
+	
+	// 4. Taxi
+	taxiButton := []interface{}{
+		map[string]interface{}{
+			"text": "🚕 Викликати таксі",
+			"callback_data": fmt.Sprintf("call_taxi:%s", order.ID),
+		},
+	}
+
+	keyboard := map[string]interface{}{
+		"inline_keyboard": []interface{}{
+			buttons,    // Row 1: Map, Phone, Address
+			taxiButton, // Row 2: Taxi
 		},
 	}
 

@@ -44,6 +44,8 @@ clean:
 	docker-compose -f docker-compose.yml down --volumes --remove-orphans
 	docker container prune -f
 	docker volume prune -f
+clean-frontend:
+	./scripts/clean-next.sh
 test:
 	cd backend && go test -v ./tests/...
 

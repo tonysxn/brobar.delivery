@@ -1,39 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '@/contexts/settings-context';
-
-interface DaySchedule {
-    start: string;
-    end: string;
-    closed: boolean;
-}
-
-interface DaySchedules {
-    [key: string]: DaySchedule;
-}
-
-interface WorkingHours {
-    delivery: DaySchedules;
-    pickup: DaySchedules;
-}
-
-interface ServerTime {
-    timestamp: number;
-    datetime: string;
-    date: string;
-    time: string;
-    day: string;
-    day_number: number;
-}
-
-export interface ShopStatus {
-    isOpen: boolean;
-    isPaused: boolean;
-    message: string;
-    workingHours: WorkingHours | null;
-    serverTime: ServerTime | null;
-    deliveryOpen: boolean;
-    pickupOpen: boolean;
-}
+import { WorkingHours, ServerTime, ShopStatus } from '@/types/shop';
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL;
